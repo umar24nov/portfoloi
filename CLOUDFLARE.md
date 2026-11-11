@@ -25,6 +25,10 @@ The GitHub commit currently reports a successful Vercel deployment, so the Verce
 4. Create the database with `npm run cf:db:create`. Wrangler prints a UUID. Copy it into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
 5. Keep the configured database name `mohammad-umar-portfolio` unchanged, or update it consistently in `wrangler.jsonc`, `package.json`, and `.github/workflows/deploy-cloudflare.yml`.
 
+### Bootstrap the first Worker
+
+The first Worker needs to exist before the repository's deploy token can update it. Cloudflare requires account-level Workers Admin permission to create a new Worker; subsequent deployments to an existing Worker can use Editor access. To avoid giving the GitHub token broader creation privileges, create a starter Worker once in **Workers & Pages → Create application → Create Worker**, and name it exactly `mohammad-umar-portfolio`. Then run the repository workflow again; Wrangler will publish the React build and `server/cloudflare-worker.js` over that starter. Alternatively, grant the GitHub token Workers Admin at the account scope if you want CI to create the Worker itself. [Workers roles and permissions](https://developers.cloudflare.com/workers/authorization/workers/)
+
 ## 2. Add Worker secrets
 
 Set the secrets for the deployed Worker (Wrangler prompts for each value):
@@ -103,3 +107,18 @@ The `workers.dev` URL works without a custom domain. To use your own domain, add
 - `POST /api/contact` validates and rate-limits submissions, stores them in D1, verifies Turnstile when configured, and sends an inbox notification when Email Service secrets are configured.
 - Unmatched app routes fall back to React for single-page navigation.
 - The portfolio Q&A panel is an offline, rule-based guide over the visible portfolio data; it does not call a hosted AI model.
+
+## Environment variable checklist
+
+| Where | Name | Required? | Purpose |
+| --- | --- | --- | --- |
+| GitHub Actions repository secret | `CLOUDFLARE_ACCOUNT_ID` | Yes | Selects the Cloudflare account for Wrangler. |
+| GitHub Actions repository secret | `CLOUDFLARE_API_TOKEN` | Yes | Lets CI apply D1 migrations and deploy the Worker. |
+| Worker secret | `IP_HASH_SALT` | Yes for contact submissions | Salt used to hash IP addresses for the rate limit. |
+| Worker secret | `TURNSTILE_SECRET` | Only if enabling Turnstile | Server-side verification key. Pair it with the public site key below. |
+| GitHub Actions variable | `REACT_APP_TURNSTILE_SITE_KEY` | Only if enabling Turnstile | Public key rendered by the React contact form at build time. |
+| Worker secrets | `CONTACT_TO`, `CONTACT_FROM` | Only if enabling email notifications | Verified recipient and sender for Cloudflare Email Service. Both are needed for sending. |
+| React build variable | `REACT_APP_API_URL` | No | Leave unset for this same-origin Worker API; the app defaults to `/api`. |
+| Local `.dev.vars` | `IP_HASH_SALT` and optional Worker secrets | Only for local Worker development | Local-only values; copy `.dev.vars.example` and replace its placeholders. |
+
+The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. This repository's older Firebase, MongoDB, Resend, and Vercel API files are legacy code and are not required by the Cloudflare Worker. The separate `commit-monitor.yml` workflow still calls the former portfolio domain and has not been migrated to this Worker.
