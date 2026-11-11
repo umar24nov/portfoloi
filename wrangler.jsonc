@@ -18,7 +18,10 @@
       "migrations_dir": "server/migrations"
     }
   ],
-  "vars": {
-    "IP_HASH_SALT": "replace-with-a-random-secret-before-deploying"
-  }
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "remote": true
+    }
+  ]
 }

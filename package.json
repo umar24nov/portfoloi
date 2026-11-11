@@ -33,6 +33,7 @@
     "cf:build": "npm run build",
     "cf:dev": "npm run build && wrangler dev",
     "cf:deploy": "npm run build && wrangler deploy",
+    "cf:db:create": "wrangler d1 create mohammad-umar-portfolio",
     "cf:migrate:local": "wrangler d1 migrations apply mohammad-umar-portfolio --local",
     "cf:migrate:remote": "wrangler d1 migrations apply mohammad-umar-portfolio --remote"
   },

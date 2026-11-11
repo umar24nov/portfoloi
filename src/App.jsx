@@ -27,6 +27,8 @@ export default function App() {
   const [active, setActive] = useState("home");
   const [selected, setSelected] = useState(null);
   const [formState, setFormState] = useState("idle");
+  const [notificationSent, setNotificationSent] = useState(false);
+  const [formNotice, setFormNotice] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -47,13 +49,17 @@ export default function App() {
   const goTo = (id) => { setMenuOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); };
   const submitContact = async (event) => {
     event.preventDefault(); setFormState("sending");
-    const formNode = event.currentTarget;
+      const formNode = event.currentTarget;
     const form = new FormData(formNode);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || ""}/api/contact`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: form.get("name"), email: form.get("email"), message: form.get("message"), topic: form.get("topic"), website: form.get("website") }) });
-      if (!response.ok) throw new Error("Contact service unavailable");
-      setFormState("sent"); formNode.reset();
-    } catch { setFormState("error"); }
+      const response = await fetch(`${process.env.REACT_APP_API_URL || ""}/api/contact`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: form.get("name"), email: form.get("email"), message: form.get("message"), topic: form.get("topic"), website: form.get("website"), turnstileToken: form.get("cf-turnstile-response") }) });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.error || "Contact service unavailable");
+      }
+      const result = await response.json();
+      setNotificationSent(Boolean(result.emailSent)); setFormNotice(""); setFormState("sent"); formNode.reset();
+    } catch (error) { setFormNotice(error.message || "Couldn’t send right now. Please try again in a moment."); setFormState("error"); }
   };
   const askUmar = (event) => {
     event.preventDefault(); const q = question.toLowerCase();
@@ -85,7 +91,7 @@ export default function App() {
 
       <section className="section-shell wrap proof-section"><div className="proof-big"><span>150</span><span className="proof-plus">+</span><p>LeetCode problems<br />solved and counting</p></div><div className="proof-content"><Eyebrow>05 / Outside the coursework</Eyebrow><h2 className="section-title">Practice makes<br />progress visible.</h2><div className="proof-list"><article><span>01</span><div><h3>Data structures & algorithms</h3><p>Regular problem solving in C++ to build fluency and sharpen my approach.</p></div></article><article><span>02</span><div><h3>Learning by shipping</h3><p>Personal projects turn new ideas into something concrete and testable.</p></div></article><article><span>03</span><div><h3>Always in progress</h3><p>Exploring new tools and ideas while strengthening the fundamentals.</p></div></article></div></div></section>
 
-      <section id="contact" className="contact-section"><div className="wrap"><Eyebrow>06 / Start a conversation</Eyebrow><h2 className="contact-title">Have an idea<br />worth building<span className="accent-dot">?</span></h2><div className="contact-grid"><div><p className="contact-lead">I’m interested in meaningful projects, thoughtful technical challenges, and opportunities to learn and collaborate.</p><a className="social-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">Find me on GitHub <Arrow diagonal /></a></div><form className="contact-form" onSubmit={submitContact}><input className="contact-honey" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" /><label>Your name<input name="name" autoComplete="name" required maxLength="80" placeholder="What should I call you?" /></label><label>Email address<input type="email" name="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label><label>What’s on your mind?<select name="topic"><option>Project idea</option><option>Internship opportunity</option><option>Collaboration</option><option>Just saying hello</option></select></label><label>Message<textarea name="message" rows="4" required minLength="10" maxLength="4000" placeholder="A little context goes a long way…" /></label><div className="form-bottom"><button className="button button-primary" type="submit" disabled={formState === "sending"}>{formState === "sending" ? "Sending…" : "Send a message"}<Arrow /></button><p role="status" className={`form-status ${formState}`}>{formState === "sent" ? "Thanks — your note is on its way." : formState === "error" ? "Couldn’t send right now. Please try again in a moment." : "Your message goes straight to my inbox."}</p></div></form></div></div></section>
+      <section id="contact" className="contact-section"><div className="wrap"><Eyebrow>06 / Start a conversation</Eyebrow><h2 className="contact-title">Have an idea<br />worth building<span className="accent-dot">?</span></h2><div className="contact-grid"><div><p className="contact-lead">I’m interested in meaningful projects, thoughtful technical challenges, and opportunities to learn and collaborate.</p><a className="social-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">Find me on GitHub <Arrow diagonal /></a></div><form className="contact-form" onSubmit={submitContact}><input className="contact-honey" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" /><label>Your name<input name="name" autoComplete="name" required maxLength="80" placeholder="What should I call you?" /></label><label>Email address<input type="email" name="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label><label>What’s on your mind?<select name="topic"><option>Project idea</option><option>Internship opportunity</option><option>Collaboration</option><option>Just saying hello</option></select></label><label>Message<textarea name="message" rows="4" required minLength="10" maxLength="4000" placeholder="A little context goes a long way…" /></label>{process.env.REACT_APP_TURNSTILE_SITE_KEY && <div className="cf-turnstile" data-sitekey={process.env.REACT_APP_TURNSTILE_SITE_KEY} data-theme="auto" />}<div className="form-bottom"><button className="button button-primary" type="submit" disabled={formState === "sending"}>{formState === "sending" ? "Sending…" : "Send a message"}<Arrow /></button><p role="status" className={`form-status ${formState}`}>{formState === "sent" ? notificationSent ? "Thanks — your message was saved and sent to my inbox." : "Thanks — your message was received." : formState === "error" ? formNotice : "I’ll follow up using your email address."}</p></div></form></div></div></section>
     </main>
     <footer className="site-footer wrap"><a className="brand" href="#home"><span className="brand-mark">MU</span><span>Mohammad Umar</span></a><p>Designed with care. Built to keep growing.</p><a className="back-top" href="#home">Back to top ↑</a><span className="footer-year">© {new Date().getFullYear()}</span></footer>
     <button className="assistant-launch" onClick={() => setChatOpen(true)} aria-label="Open Umar's portfolio assistant"><span>✳</span> Ask about my journey</button>

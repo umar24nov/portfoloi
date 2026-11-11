@@ -1,0 +1,6 @@
+# Copy this file to .dev.vars for local Worker development.
+# Do not commit the populated .dev.vars file.
+IP_HASH_SALT=replace-with-a-long-random-value
+TURNSTILE_SECRET=replace-with-your-turnstile-secret-key
+CONTACT_TO=your-verified-inbox@example.com
+CONTACT_FROM=portfolio@your-domain.com
