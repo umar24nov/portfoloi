@@ -14,7 +14,7 @@
     {
       "binding": "DB",
       "database_name": "mohammad-umar-portfolio",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "d260a9ba-b877-4a95-b6e5-ea8e53cc088d",
       "migrations_dir": "server/migrations"
     }
   ],
