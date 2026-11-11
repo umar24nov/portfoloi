@@ -1,69 +1,95 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
-import { ThemeProvider } from "./context/ThemeContext";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
-import AnimatedCanvas from "./components/layout/AnimatedCanvas";
-import Navbar from "./components/layout/Navbar";
-import Footer from "./components/layout/Footer";
+const projects = [
+  { name: "StudyVault", kind: "Academic resource platform", year: "2025", stack: ["React", "Express", "Firebase", "Cloudinary"], description: "A place for students to discover, share, rate, and download useful academic resources.", details: "StudyVault brings course material into one searchable library. Students can sign in, upload resources, browse what others have shared, and rate or download material.", features: ["Authentication and protected flows", "Resource uploads and discovery", "Ratings and downloads"], href: "https://studyvaultapp.vercel.app/", github: "https://github.com/umar24nov" },
+  { name: "Student Performance Predictor", kind: "Machine learning", year: "2025", stack: ["Python", "Pandas", "NumPy", "Scikit-learn"], description: "An academic forecasting project that explores student outcomes through data and machine learning.", details: "The project covers data cleaning, feature analysis, model training, and evaluation to predict student performance categories and surface learners who may need support.", features: ["Data preprocessing and exploration", "Feature analysis", "Model comparison and evaluation"], href: "https://academic-ai.onrender.com", github: "https://github.com/umar24nov" },
+  { name: "Zenrix", kind: "EdTech product concept", year: "In progress", stack: ["Product design", "Next.js", "TypeScript"], description: "A considered product concept for bringing coaching workflows into one focused learning space.", details: "Zenrix explores a shared workspace for coaching institutes, educators, and students. The concept is being shaped around clear learning workflows and a calm, useful interface.", features: ["Education-first product direction", "Student and educator workflows", "Early stage concept"], href: "#contact", github: "https://github.com/umar24nov" },
+  { name: "Personal Portfolio", kind: "Digital identity", year: "2026", stack: ["React", "Tailwind CSS", "Express", "Cloudflare"], description: "A new portfolio experience designed around the work, the thinking, and the journey behind it.", details: "This portfolio brings together project case studies, learning milestones, and a direct way to start a conversation. Built to grow alongside the work.", features: ["Responsive editorial design", "Accessible motion and theme controls", "Cloudflare-ready contact API"], href: "#home", github: "https://github.com/umar24nov" },
+];
+const groups = [
+  ["Programming", "C++", "JavaScript", "Python"],
+  ["Frontend", "React", "Next.js", "Tailwind CSS", "HTML & CSS"],
+  ["Backend", "Node.js", "Express.js", "REST APIs"],
+  ["AI & data", "Pandas", "NumPy", "Scikit-learn"],
+  ["Tools", "Git", "GitHub", "Firebase", "Cloudinary", "Cloudflare"],
+  ["Foundations", "Data structures", "OOP", "DBMS", "Computer networks"],
+];
+const nav = [["About", "about"], ["Work", "projects"], ["Journey", "experience"], ["Contact", "contact"]];
 
-import Hero from "./components/sections/Hero";
-import About from "./components/sections/About";
-import Projects from "./components/sections/Projects";
-import Skills from "./components/sections/Skills";
-import CodeSignature from "./components/sections/CodeSignature";
-import Education from "./components/sections/Education";
-import Contact from "./components/sections/Contact";
-import GitHubMap from "./components/sections/GitHubMap";
-
-import FeedbackButton from "./components/feedback/FeedbackButton";
-import FeedbackModal from "./components/feedback/FeedbackModal";
-
-function HomePage() {
-  return (
-    <>
-      <Hero />
-      <About />
-      <Projects />
-      <Skills />
-      <CodeSignature />
-      <Education />
-      <Contact />
-      <GitHubMap />
-    </>
-  );
-}
+function Arrow({ diagonal = false }) { return <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none"><path d={diagonal ? "M5 15 15 5M6 5h9v9" : "M3 10h13m-5-5 5 5-5 5"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function Eyebrow({ children }) { return <p className="eyebrow">{children}</p>; }
+function SectionTitle({ eyebrow, children, id }) { return <div className="mb-14 md:mb-20"><Eyebrow>{eyebrow}</Eyebrow><h2 id={id} className="section-title mt-5">{children}</h2></div>; }
 
 export default function App() {
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("mu-theme") || "dark");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [active, setActive] = useState("home");
+  const [selected, setSelected] = useState(null);
+  const [formState, setFormState] = useState("idle");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
 
-  return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <div
-          className="min-h-screen overflow-x-hidden grid-bg"
-          style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}
-        >
-          <AnimatedCanvas />
-          <Navbar onFeedback={() => setFeedbackOpen(true)} />
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("mu-theme", theme); }, [theme]);
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) setActive(entry.target.id); }), { rootMargin: "-35% 0px -55% 0px" });
+    document.querySelectorAll("main section[id]").forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") { setSelected(null); setChatOpen(false); setMenuOpen(false); } };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+  useEffect(() => { document.body.style.overflow = selected || menuOpen ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [selected, menuOpen]);
 
-          <main>
-            <AnimatePresence mode="wait">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-              </Routes>
-            </AnimatePresence>
-          </main>
+  const goTo = (id) => { setMenuOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); };
+  const submitContact = async (event) => {
+    event.preventDefault(); setFormState("sending");
+    const formNode = event.currentTarget;
+    const form = new FormData(formNode);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || ""}/api/contact`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: form.get("name"), email: form.get("email"), message: form.get("message"), topic: form.get("topic"), website: form.get("website") }) });
+      if (!response.ok) throw new Error("Contact service unavailable");
+      setFormState("sent"); formNode.reset();
+    } catch { setFormState("error"); }
+  };
+  const askUmar = (event) => {
+    event.preventDefault(); const q = question.toLowerCase();
+    const reply = q.includes("project") ? "Umar has worked on StudyVault, a student resource sharing platform, a machine learning project for student performance prediction, and the Zenrix EdTech concept. Take a look at the selected work section for more." : q.includes("skill") || q.includes("stack") ? "His current toolkit includes React, Tailwind CSS, Node.js, Express, Python, scikit-learn, Firebase, and Cloudflare, alongside core computer science foundations." : q.includes("study") || q.includes("education") ? "Umar is studying Computer Science and Engineering at COER University (2023–2027)." : q.includes("contact") || q.includes("hire") ? "Use the contact form on this page to send Umar a note." : "I can share a little about Umar's projects, skills, education, and learning journey. Try asking about one of those.";
+    setAnswer(reply); setQuestion("");
+  };
 
-          <Footer />
-          <FeedbackButton onClick={() => setFeedbackOpen(true)} />
-          <AnimatePresence>
-            {feedbackOpen && (
-              <FeedbackModal onClose={() => setFeedbackOpen(false)} />
-            )}
-          </AnimatePresence>
-        </div>
-      </BrowserRouter>
-    </ThemeProvider>
-  );
+  return <div className="portfolio min-h-screen">
+    <a className="skip-link" href="#main">Skip to content</a>
+    <header className="site-nav"><div className="nav-inner">
+      <a href="#home" className="brand" aria-label="Mohammad Umar, home"><span className="brand-mark">MU</span><span>Mohammad Umar</span></a>
+      <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">{nav.map(([label, id]) => <a key={id} className={`nav-link ${active === id ? "is-active" : ""}`} href={`#${id}`}>{label}</a>)}</nav>
+      <div className="flex items-center gap-2"><button className="icon-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>{theme === "dark" ? "☼" : "◐"}</button><button className="menu-toggle md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label={menuOpen ? "Close menu" : "Open menu"}>{menuOpen ? "Close" : "Menu"}<span className="menu-lines" /></button></div>
+    </div></header>
+    <AnimatePresence>{menuOpen && <motion.nav className="mobile-menu md:hidden" initial={{ clipPath: "inset(0 0 100% 0)" }} animate={{ clipPath: "inset(0)" }} exit={{ clipPath: "inset(0 0 100% 0)" }} aria-label="Mobile navigation">{nav.map(([label, id], i) => <a key={id} style={{ "--i": i }} href={`#${id}`} onClick={() => goTo(id)}>{label}<Arrow diagonal /></a>)}</motion.nav>}</AnimatePresence>
+    <main id="main">
+      <section id="home" className="hero wrap section-shell"><div className="hero-kicker"><span className="availability-dot" /> {"Open to internships and collaborations"}<span className="hero-place">Roorkee, India · {new Date().getFullYear()}</span></div>
+        <div className="hero-heading"><p className="eyebrow">Computer science · Software engineering</p><h1>Ideas into<br /><span>experiences<span className="accent-dot">.</span></span></h1><div className="hero-orbit" aria-hidden="true"><span>MU</span><i /><i /><i /></div></div>
+        <div className="hero-bottom"><p className="hero-copy">I’m Mohammad Umar — a CS undergraduate building thoughtful digital products across frontend, full-stack, and machine learning.</p><div className="hero-actions"><button className="button button-primary" onClick={() => goTo("projects")}>Explore selected work <Arrow /></button><a className="text-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">GitHub <Arrow diagonal /></a></div><div className="hero-index"><span>Scroll to explore</span><span className="scroll-line" /></div></div>
+      </section>
+
+      <section id="about" className="section-shell wrap"><SectionTitle eyebrow="01 / A little about me">Build with purpose.<br /><span className="text-muted">Engineer with precision.</span></SectionTitle><div className="about-grid"><div className="about-side"><p className="mono-label">A note on how I work</p><p>Curiosity first. Craft always.</p></div><div className="about-main"><p className="about-lead">I’m a Computer Science student who enjoys turning complex ideas into useful, human experiences.</p><p className="body-copy">My journey so far has moved between building web products, exploring machine learning, and strengthening the computer science fundamentals underneath them. I care about the details: how a product feels, how a system holds up, and whether the thing I build solves a real problem.</p><div className="principles">{[["01", "Learn by building", "Small experiments, real users, useful lessons."], ["02", "Stay curious", "Follow questions across the stack and beyond."], ["03", "Make it matter", "Technology is at its best when it helps someone." ]].map(([n, title, copy]) => <article key={n}><span>{n}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></div></div></section>
+
+      <section id="projects" className="section-shell work-section"><div className="wrap"><SectionTitle eyebrow="02 / Selected work">A few things<br />I’ve been building.</SectionTitle><div className="projects-list">{projects.map((project, index) => <article className="project-row" key={project.name}><button className={`project-art art-${index + 1}`} onClick={() => setSelected(index)} aria-label={`Open ${project.name} case study`}><span className="art-caption">PROJECT / {String(index + 1).padStart(2, "0")}</span><span className="art-word">{project.name === "Student Performance Predictor" ? "PREDICT" : project.name === "Personal Portfolio" ? "UMAR" : project.name.split(" ")[0]}</span><span className="art-arrow"><Arrow diagonal /></span><span className="art-grid" /></button><div className="project-info"><div className="project-meta"><span>{project.kind}</span><span>{project.year}</span></div><button className="project-title" onClick={() => setSelected(index)}>{project.name}<Arrow diagonal /></button><p>{project.description}</p><ul className="tag-list">{project.stack.map((tag) => <li key={tag}>{tag}</li>)}</ul><button className="project-open" onClick={() => setSelected(index)}>Read case study <Arrow /></button></div></article>)}</div></div></section>
+
+      <section id="experience" className="section-shell wrap"><SectionTitle eyebrow="03 / Learning in motion">The journey<br />is the work.</SectionTitle><div className="journey-grid"><div className="timeline"><article><time>2023 — 2027</time><div><h3>B.Tech · Computer Science & Engineering</h3><p className="timeline-org">COER University</p><p className="body-copy">Building a strong foundation in software engineering, algorithms, databases, and networks while turning classroom concepts into practical projects.</p></div></article><article><time>Along the way</time><div><h3>Learning through internships</h3><p className="timeline-org">Frontend · Python · C++</p><p className="body-copy">Explored different parts of the software development process and kept expanding my toolkit through hands-on work.</p></div></article><article><time>Every day</time><div><h3>Practice, reflect, improve</h3><p className="timeline-org">Projects · DSA · Curiosity</p><p className="body-copy">Regularly solving problems, building ideas, and learning the next thing that makes me a better engineer.</p></div></article></div><aside className="education-card"><Eyebrow>Currently studying</Eyebrow><p className="edu-degree">B.Tech in<br />Computer Science</p><p className="edu-school">COER University<br />2023 — 2027</p><div className="edu-rule" /><p className="edu-location">Roorkee, Uttarakhand, India</p></aside></div></section>
+
+      <section id="skills" className="section-shell wrap skills-section"><SectionTitle eyebrow="04 / The toolkit">Tools for<br /><span className="text-muted">turning ideas real.</span></SectionTitle><div className="skills-list">{groups.map(([label, ...skills]) => <div className="skill-row" key={label}><h3>{label}</h3><ul>{skills.map((skill) => <li key={skill}>{skill}</li>)}</ul></div>)}</div></section>
+
+      <section className="section-shell wrap proof-section"><div className="proof-big"><span>150</span><span className="proof-plus">+</span><p>LeetCode problems<br />solved and counting</p></div><div className="proof-content"><Eyebrow>05 / Outside the coursework</Eyebrow><h2 className="section-title">Practice makes<br />progress visible.</h2><div className="proof-list"><article><span>01</span><div><h3>Data structures & algorithms</h3><p>Regular problem solving in C++ to build fluency and sharpen my approach.</p></div></article><article><span>02</span><div><h3>Learning by shipping</h3><p>Personal projects turn new ideas into something concrete and testable.</p></div></article><article><span>03</span><div><h3>Always in progress</h3><p>Exploring new tools and ideas while strengthening the fundamentals.</p></div></article></div></div></section>
+
+      <section id="contact" className="contact-section"><div className="wrap"><Eyebrow>06 / Start a conversation</Eyebrow><h2 className="contact-title">Have an idea<br />worth building<span className="accent-dot">?</span></h2><div className="contact-grid"><div><p className="contact-lead">I’m interested in meaningful projects, thoughtful technical challenges, and opportunities to learn and collaborate.</p><a className="social-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">Find me on GitHub <Arrow diagonal /></a></div><form className="contact-form" onSubmit={submitContact}><input className="contact-honey" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" /><label>Your name<input name="name" autoComplete="name" required maxLength="80" placeholder="What should I call you?" /></label><label>Email address<input type="email" name="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label><label>What’s on your mind?<select name="topic"><option>Project idea</option><option>Internship opportunity</option><option>Collaboration</option><option>Just saying hello</option></select></label><label>Message<textarea name="message" rows="4" required minLength="10" maxLength="4000" placeholder="A little context goes a long way…" /></label><div className="form-bottom"><button className="button button-primary" type="submit" disabled={formState === "sending"}>{formState === "sending" ? "Sending…" : "Send a message"}<Arrow /></button><p role="status" className={`form-status ${formState}`}>{formState === "sent" ? "Thanks — your note is on its way." : formState === "error" ? "Couldn’t send right now. Please try again in a moment." : "Your message goes straight to my inbox."}</p></div></form></div></div></section>
+    </main>
+    <footer className="site-footer wrap"><a className="brand" href="#home"><span className="brand-mark">MU</span><span>Mohammad Umar</span></a><p>Designed with care. Built to keep growing.</p><a className="back-top" href="#home">Back to top ↑</a><span className="footer-year">© {new Date().getFullYear()}</span></footer>
+    <button className="assistant-launch" onClick={() => setChatOpen(true)} aria-label="Open Umar's portfolio assistant"><span>✳</span> Ask about my journey</button>
+    <AnimatePresence>{chatOpen && <motion.div className="assistant-panel" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} role="dialog" aria-modal="true" aria-labelledby="assistant-title"><div className="assistant-head"><div><p className="mono-label">Portfolio guide</p><h2 id="assistant-title">Ask about my journey</h2></div><button className="icon-button" onClick={() => setChatOpen(false)} aria-label="Close assistant">×</button></div><p className="assistant-intro">A small guide to my projects, skills, and learning path.</p>{answer && <p className="assistant-answer" aria-live="polite">{answer}</p>}<div className="assistant-prompts">{["What projects have you built?", "What skills are you learning?"].map((prompt) => <button key={prompt} onClick={() => { setQuestion(prompt); }}>{prompt}</button>)}</div><form className="assistant-form" onSubmit={askUmar}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask a question…" maxLength={240} aria-label="Ask about Umar" /><button aria-label="Send question"><Arrow /></button></form><p className="assistant-note">Answers are based on the information on this portfolio.</p></motion.div>}</AnimatePresence>
+    <AnimatePresence>{selected !== null && <motion.div className="case-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}><motion.article className="case-panel" initial={{ y: 42, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 28, opacity: 0 }} role="dialog" aria-modal="true" aria-labelledby="case-title"><div className="case-top"><span className="mono-label">Case study · {String(selected + 1).padStart(2, "0")} / {String(projects.length).padStart(2, "0")}</span><button className="icon-button" onClick={() => setSelected(null)} aria-label="Close case study">×</button></div><div className={`case-visual art-${selected + 1}`}><span className="art-word">{projects[selected].name.split(" ")[0]}</span></div><Eyebrow>{projects[selected].kind}</Eyebrow><h2 id="case-title" className="case-title">{projects[selected].name}</h2><div className="case-copy"><div><h3>Overview</h3><p>{projects[selected].details}</p></div><div><h3>Highlights</h3><ul>{projects[selected].features.map((feature) => <li key={feature}>{feature}</li>)}</ul></div><div><h3>Built with</h3><ul className="tag-list">{projects[selected].stack.map((tag) => <li key={tag}>{tag}</li>)}</ul></div></div><div className="case-links"><a className="text-link" href={projects[selected].github} target="_blank" rel="noreferrer">GitHub profile <Arrow diagonal /></a>{projects[selected].href.startsWith("http") && <a className="text-link" href={projects[selected].href} target="_blank" rel="noreferrer">Visit project <Arrow diagonal /></a>}</div><button className="case-next" onClick={() => setSelected((selected + 1) % projects.length)}>Next project <Arrow /></button></motion.article></motion.div>}</AnimatePresence>
+  </div>;
 }
