@@ -27,9 +27,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "server": "node server/server.js",
-    "dev": "concurrently \"npm start\" \"npm run server\"",
-    "install-all": "npm install && cd server && npm install",
+    "legacy:server": "node server/server.js",
+    "dev": "npm run cf:dev",
     "cf:build": "npm run build",
     "cf:dev": "npm run build && wrangler dev",
     "cf:deploy": "npm run build && wrangler deploy",
@@ -37,7 +36,6 @@
     "cf:migrate:local": "wrangler d1 migrations apply mohammad-umar-portfolio --local",
     "cf:migrate:remote": "wrangler d1 migrations apply mohammad-umar-portfolio --remote"
   },
-  "proxy": "http://localhost:5000",
   "eslintConfig": {
     "extends": [
       "react-app",

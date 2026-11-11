@@ -1,0 +1,12 @@
+{
+  "name": "Mohammad Umar — Portfolio",
+  "short_name": "Mohammad Umar",
+  "description": "Software development portfolio of Mohammad Umar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0b",
+  "theme_color": "#0c0c0b",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

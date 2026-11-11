@@ -1,6 +1,17 @@
 # Put the portfolio live on Cloudflare
 
-The app is configured as one Cloudflare Worker: React's production build is served as static assets, and Express handles `/api/*`. D1 stores contact messages; the Worker can also validate Turnstile and email new submissions using Cloudflare Email Service.
+The target deployment is one Cloudflare Worker: React's production build is served as static assets, and the Express-compatible Worker entry point handles `/api/*`. D1 stores contact messages; the Worker can also validate Turnstile and email new submissions using Cloudflare Email Service.
+
+## Current backend and data flow
+
+- The browser loads the React single-page app from the Worker static asset binding (`build/`).
+- The contact form sends JSON to `POST /api/contact` on the same origin. No separate public API host or database connection string is needed in the browser.
+- `server/cloudflare-worker.js` is the production backend. It exposes the Express routes through the Cloudflare Workers adapter, checks form fields and the hidden honeypot, applies an IP-hash-based hourly limit, optionally verifies Turnstile, and writes accepted submissions to D1 using prepared SQL.
+- D1 is a managed SQLite database. The `migrations/` SQL files define its schema; apply them with the Wrangler migration commands below. Email is a notification side effect through the `EMAIL` binding, not the source of truth. A message can be stored even when email delivery is unavailable.
+- The older `server/server.js`, Mongoose models, and controllers are a separate legacy Node/Mongo implementation. The Cloudflare Worker does not import or use that backend; `npm run legacy:server` is only for working on that old server. The active local workflow is `npm run cf:dev`.
+- The portfolio's “Ask Umar AI” is an offline, profile-based question/answer guide in the frontend. It does not call an LLM or send prompts to a server.
+
+The old `vercel.json` deployment configuration has been removed from the Cloudflare migration. Also disconnect or disable any Vercel Git integration in the Vercel dashboard if it remains connected; removing the file in Git cannot change account-level integrations.
 
 ## 1. Create and connect your Cloudflare account
 
