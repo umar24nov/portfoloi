@@ -13,6 +13,10 @@ The target deployment is one Cloudflare Worker: React's production build is serv
 
 The old `vercel.json` deployment configuration has been removed from the Cloudflare migration. Also disconnect or disable any Vercel Git integration in the Vercel dashboard if it remains connected; removing the file in Git cannot change account-level integrations.
 
+### What is running before Cloudflare is configured
+
+The GitHub commit currently reports a successful Vercel deployment, so the Vercel Git integration is still active. In that deployment, `api/contact.js` is a Vercel serverless function that sends the submitted message through Resend; it does not write to a database. The separate `server/server.js` plus Mongoose models describe an older MongoDB backend and are not automatically part of the current Vercel or Cloudflare deployment. After Cloudflare is configured, the Worker replaces that contact endpoint with D1-backed storage and optional Cloudflare Email Service notifications. The visitor's browser never connects directly to D1 or MongoDB.
+
 ## 1. Create and connect your Cloudflare account
 
 1. Sign in or create an account at [Cloudflare](https://dash.cloudflare.com/).
