@@ -236,7 +236,7 @@ a { text-decoration:none; }
 
 /* Fine pointer interactions and responsive behavior mirror the HTML prototype. */
 .brand-symbol { width:32px; height:32px; flex:none; overflow:visible; }
-.brand-symbol-bg { fill:#000; stroke:none; }
+.brand-symbol-bg { fill:var(--accent); stroke:none; }
 .brand-symbol-monogram { fill:#fff; font-family:Arial,Helvetica,sans-serif; font-size:20px; font-weight:700; letter-spacing:-1px; }
 .brand-symbol-m,.brand-symbol-u { fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-width:2.7; }
 .brand-symbol-m { stroke:var(--fg); }
@@ -341,9 +341,9 @@ main section:not([style*="display: none"]) { animation:page-enter .42s cubic-bez
 .assistant-nav-trigger { min-height:44px; padding:.65rem 1rem; font-size:.7rem; }
 .assistant-label-short { display:none; }
 .brand-symbol { width:32px; height:32px; }
-.brand-symbol-bg { fill:#000; stroke:none; }
+.brand-symbol-bg { fill:var(--accent); stroke:none; }
 .brand-symbol-monogram { fill:#fff; font:700 20px Arial,Helvetica,sans-serif; letter-spacing:-1px; }
-.brand:hover .brand-symbol-bg { fill:#000; stroke:none; }
+.brand:hover .brand-symbol-bg { fill:var(--accent); stroke:none; }
 .hero { min-height:100svh; padding-top:calc(76px + clamp(12px,2.6vh,24px)); padding-bottom:clamp(12px,2vh,18px); }
 .hero-kicker { flex-wrap:wrap; gap:.35rem .55rem; font-size:clamp(.55rem,.68vw,.66rem); line-height:1.4; }
 .hero-kicker b { color:var(--fg); font-weight:600; }
@@ -468,4 +468,30 @@ main section:not([style*="display: none"]) { animation:page-enter .42s cubic-bez
   .hero-portrait { position:relative; top:auto; right:auto; width:min(44vw,210px); margin:.6rem 0 0 auto; transform:none; }
   .sculpture { opacity:.14; }
   .projects-heading .section-title { max-width:24ch; font-size:clamp(2.25rem,7.5vw,3.5rem); }
+}
+
+/* Keep a compact identity bar visible across every portfolio page. */
+.portfolio { --footer-height:68px; padding-bottom:var(--footer-height); }
+.site-footer { position:fixed; inset:auto 0 0; z-index:35; width:100%; max-width:none; min-height:var(--footer-height); margin:0; padding:10px var(--gutter); grid-template-columns:auto minmax(0,1fr) auto auto; gap:clamp(.8rem,2vw,2rem); border-top:1px solid var(--line); background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:blur(18px); box-shadow:0 -14px 38px rgb(0 0 0 / .12); }
+.site-footer .brand-symbol { width:30px; height:30px; }
+.site-footer p { display:grid; gap:.12rem; color:var(--muted); font:400 .62rem/1.35 var(--mono); letter-spacing:.025em; }
+.footer-kicker { color:var(--fg); font-size:.55rem; letter-spacing:.12em; }
+.footer-github { display:inline-flex; align-items:center; gap:.4rem; color:var(--fg); font:400 .62rem var(--mono); text-transform:uppercase; letter-spacing:.06em; transition:color .2s; }
+.footer-github svg { width:.75rem; height:.75rem; color:var(--accent); }
+.footer-github:hover { color:var(--accent); }
+.footer-year { white-space:nowrap; color:var(--muted); }
+.hero { padding-bottom:calc(var(--footer-height) + 16px); }
+.hero::after { content:""; position:absolute; z-index:0; inset:82px var(--gutter) calc(var(--footer-height) + 9px); border:1px solid color-mix(in srgb,var(--line) 82%,transparent); pointer-events:none; }
+.hero-kicker,.hero-heading,.hero-bottom { position:relative; z-index:1; }
+@media (max-width:640px) {
+  .portfolio { --footer-height:58px; }
+  .site-footer { min-height:var(--footer-height); padding:8px 16px; grid-template-columns:auto minmax(0,1fr) auto auto; gap:.65rem; }
+  .site-footer .brand>span { display:none; }
+  .site-footer .brand-symbol { width:28px; height:28px; }
+  .site-footer p { gap:0; font-size:.5rem; }
+  .footer-kicker { font-size:.47rem; }
+  .footer-github { gap:.2rem; font-size:.53rem; }
+  .footer-year { font-size:.5rem; }
+  .hero { padding-bottom:calc(var(--footer-height) + 14px); }
+  .hero::after { inset:72px 12px calc(var(--footer-height) + 8px); }
 }
