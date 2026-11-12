@@ -497,9 +497,10 @@ main section:not([style*="display: none"]) { animation:page-enter .42s cubic-bez
 
 /* Keep the navbar in the page layout so the landing content starts below it. */
 .site-nav { position:sticky; top:0; }
+.site-nav { background:transparent; border-bottom-color:transparent; -webkit-backdrop-filter:none; backdrop-filter:none; }
 .hero { min-height:calc(100svh - 76px); padding-top:clamp(16px,2.5vh,28px); }
-.hero::after { inset:18px var(--gutter) calc(var(--footer-height) + 9px); }
+.hero { overflow:clip; }
+.hero::after { content:none; }
 @media (max-width:640px) {
   .hero { min-height:calc(100svh - 66px); padding-top:16px; }
-  .hero::after { inset:14px 12px calc(var(--footer-height) + 8px); }
 }
