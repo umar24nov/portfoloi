@@ -450,22 +450,17 @@ main section:not([style*="display: none"]) { animation:page-enter .42s cubic-bez
 .hero-status svg { width:.8rem; height:.8rem; color:var(--accent); transition:transform .2s; }
 .hero-status:hover { color:var(--accent); }
 .hero-status:hover svg { transform:translate(2px,-2px); }
-.hero h1 { max-width:calc(100% - clamp(250px,25vw,360px) - clamp(1rem,3vw,3rem)); font-size:clamp(3.6rem,min(13vw,21vh),10.5rem); line-height:.8; }
-.hero-portrait { position:absolute; z-index:3; top:50%; right:clamp(0px,2vw,24px); width:clamp(250px,25vw,360px); aspect-ratio:4 / 5; overflow:hidden; transform:translateY(-48%); border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); border-radius:46% 46% 12px 12px; background:#f6f6f4; box-shadow:0 22px 70px #0005; }
-.hero-portrait img { display:block; width:100%; height:100%; object-fit:cover; object-position:center 24%; }
+.hero h1 { max-width:100%; font-size:clamp(3.6rem,min(13vw,21vh),10.5rem); line-height:.8; }
 .projects-heading .section-title { max-width:24ch; font-size:clamp(2.4rem,5vw,4.7rem); line-height:.98; }
 @media (max-width:1279px) and (min-width:901px) {
-  .hero h1 { max-width:calc(100% - 250px - 1.5rem); font-size:clamp(3.5rem,min(13vw,18vh),8.6rem); }
-  .hero-portrait { width:clamp(220px,24vw,300px); }
+  .hero h1 { max-width:100%; font-size:clamp(3.5rem,min(13vw,18vh),8.6rem); }
 }
 @media (max-width:900px) and (min-width:641px) {
-  .hero h1 { max-width:calc(100% - 210px - 1rem); font-size:clamp(3.3rem,min(12vw,17vh),7.5rem); }
-  .hero-portrait { width:clamp(190px,25vw,250px); }
+  .hero h1 { max-width:100%; font-size:clamp(3.3rem,min(12vw,17vh),7.5rem); }
 }
 @media (max-width:640px) {
   .hero h1 { max-width:100%; font-size:clamp(2.6rem,15vw,4.5rem); }
   .hero-status { flex:0 1 auto; margin-left:0; }
-  .hero-portrait { position:relative; top:auto; right:auto; width:min(44vw,210px); margin:.6rem 0 0 auto; transform:none; }
   .sculpture { opacity:.14; }
   .projects-heading .section-title { max-width:24ch; font-size:clamp(2.25rem,7.5vw,3.5rem); }
 }
