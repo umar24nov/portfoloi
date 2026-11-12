@@ -483,6 +483,10 @@ main section:not([style*="display: none"]) { animation:page-enter .42s cubic-bez
 .hero { padding-bottom:calc(var(--footer-height) + 16px); }
 .hero::after { content:""; position:absolute; z-index:0; inset:82px var(--gutter) calc(var(--footer-height) + 9px); border:1px solid color-mix(in srgb,var(--line) 82%,transparent); pointer-events:none; }
 .hero-kicker,.hero-heading,.hero-bottom { position:relative; z-index:1; }
+@media (min-width:641px) and (max-height:800px) {
+  .hero-heading { margin-block:clamp(4px,1vh,12px); }
+  .hero h1 { font-size:clamp(3.5rem,min(11vw,16vh),8.7rem); line-height:.78; }
+}
 @media (max-width:640px) {
   .portfolio { --footer-height:58px; }
   .site-footer { min-height:var(--footer-height); padding:8px 16px; grid-template-columns:auto minmax(0,1fr) auto auto; gap:.65rem; }
