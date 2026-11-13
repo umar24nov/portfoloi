@@ -623,3 +623,53 @@ main > section[id] { scroll-margin-top:92px; }
   .floating-contact { right:14px; bottom:calc(12px + env(safe-area-inset-bottom)); min-height:44px; padding:.62rem .85rem; font-size:.74rem; }
   .site-footer { padding-block:1rem; }
 }
+
+/* Final polish for the intro, details card, and social footer. */
+.hero::before { display:none; }
+.hero-kicker { text-transform:none; }
+.hero-status { display:inline-flex; min-height:50px; align-items:center; gap:.72rem; padding:.78rem 1.1rem; border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line)); border-radius:999px; background:color-mix(in srgb,var(--accent) 11%,var(--surface)); color:var(--fg); font:600 clamp(.78rem,1vw,.9rem)/1.25 var(--sans); letter-spacing:-.01em; text-transform:none; box-shadow:0 8px 28px color-mix(in srgb,var(--accent) 12%,transparent); transition:transform .25s,border-color .25s,background-color .25s,box-shadow .25s; }
+.hero-status .availability-dot { width:9px; height:9px; flex:none; }
+.hero-status svg { width:.95rem; height:.95rem; flex:none; color:var(--accent); }
+.hero-status:hover { transform:translateY(-2px); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 17%,var(--surface)); color:var(--fg); box-shadow:0 12px 34px color-mix(in srgb,var(--accent) 18%,transparent); }
+.hero-status:hover svg { transform:translate(2px,-2px); }
+.about-side.details-card { position:sticky; top:100px; width:100%; max-width:none; align-self:start; overflow:hidden; padding:1.35rem; border:1px solid var(--line); border-radius:12px; background:radial-gradient(ellipse at 100% 0%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 43%),var(--surface); box-shadow:0 16px 52px rgb(0 0 0 / .14); }
+.details-card-top { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding-bottom:1rem; border-bottom:1px solid var(--line); }
+.details-card-top .mono-label { margin:0; font-size:.58rem; }
+.details-card-label { display:block; margin-top:.3rem; color:var(--muted); font-size:.75rem; }
+.details-card-top .brand-symbol { width:36px; height:36px; }
+.details-field { padding:1.05rem 0; border-bottom:1px solid var(--line); }
+.details-index { color:var(--muted); font:400 .57rem var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+.details-index i { padding:0 .2rem; color:var(--accent); font-style:normal; }
+.details-field h3 { margin:.55rem 0 .12rem; color:var(--fg); font:600 clamp(1.45rem,2.2vw,2rem)/1 var(--serif); letter-spacing:-.045em; }
+.details-field>p { margin:0; color:var(--muted); font-size:.76rem; line-height:1.45; }
+.details-tags { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.65rem; }
+.details-tags span { padding:.38rem .56rem; border:1px solid var(--line); border-radius:999px; background:color-mix(in srgb,var(--bg) 58%,transparent); color:var(--fg); font-size:.66rem; line-height:1.2; }
+.details-card-bottom { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding-top:1rem; color:var(--muted); font:400 .6rem var(--mono); letter-spacing:.045em; text-transform:uppercase; }
+.details-card-bottom strong { display:inline-flex; align-items:center; gap:.4rem; color:var(--fg); font-size:.66rem; font-weight:550; }
+.details-card-bottom .availability-dot { width:7px; height:7px; }
+.site-footer { gap:clamp(1rem,3vw,3rem); }
+.footer-info { display:flex; min-width:0; flex:1; align-items:center; justify-content:space-between; gap:1.5rem; }
+.footer-socials { display:flex; flex-wrap:wrap; align-items:center; gap:clamp(.8rem,2vw,1.7rem); }
+.footer-socials a { display:inline-flex; align-items:center; gap:.25rem; color:var(--muted); font:500 .65rem var(--mono); transition:color .2s; }
+.footer-socials a:hover { color:var(--accent); }
+.footer-socials svg { width:.75rem; height:.75rem; color:var(--accent); }
+.footer-credit { display:grid; justify-items:end; gap:.2rem; color:var(--muted); font:400 .57rem/1.45 var(--mono); letter-spacing:.015em; text-align:right; }
+.site-footer { padding-right:calc(var(--gutter) + 150px); }
+@media (max-width:900px) {
+  .about-side.details-card { position:static; }
+  .footer-info { gap:1rem; }
+  .footer-socials { gap:.8rem; }
+}
+@media (max-width:640px) {
+  .hero-status { min-height:46px; gap:.55rem; padding:.68rem .8rem; font-size:.74rem; }
+  .about-side.details-card { width:100%; max-width:none; padding:1.1rem; }
+  .details-card-top .brand-symbol { width:32px; height:32px; }
+  .details-field { padding:.9rem 0; }
+  .details-tags { gap:.35rem; }
+  .details-tags span { font-size:.62rem; }
+  .site-footer { align-items:flex-start; flex-direction:column; gap:.85rem; padding-block:1.1rem; }
+  .site-footer { padding-right:14px; }
+  .footer-info { width:100%; align-items:flex-start; flex-direction:column; gap:.75rem; }
+  .footer-socials { gap:1.2rem; }
+  .footer-credit { justify-items:start; text-align:left; }
+}
