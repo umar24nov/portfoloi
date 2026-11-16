@@ -21,6 +21,27 @@ const pageFromHash = () => {
   const page = window.location.hash.replace(/^#\/?/, "").split("?")[0];
   return validPages.has(page) ? page : "home";
 };
+const readStoredTheme = () => {
+  try {
+    const stored = window.localStorage.getItem("mu-theme");
+    return stored === "light" || stored === "dark" ? stored : "dark";
+  } catch {
+    return "dark";
+  }
+};
+const storeTheme = (value) => {
+  try { window.localStorage.setItem("mu-theme", value); } catch { /* storage can be blocked */ }
+};
+const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const trapFocus = (event, container) => {
+  if (event.key !== "Tab" || !container) return;
+  const nodes = Array.from(container.querySelectorAll(focusableSelector)).filter((node) => node.offsetParent !== null);
+  if (!nodes.length) return;
+  const first = nodes[0];
+  const last = nodes[nodes.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+};
 
 function Arrow({ diagonal = false }) { return <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none"><path d={diagonal ? "M5 15 15 5M6 5h9v9" : "M3 10h13m-5-5 5 5-5 5"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function Eyebrow({ children }) { return <p className="eyebrow">{children}</p>; }
@@ -194,7 +215,7 @@ function ProjectArtwork({ index, title }) {
 }
 
 export default function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem("mu-theme") || "dark");
+  const [theme, setTheme] = useState(readStoredTheme);
   const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState(pageFromHash);
   const [selected, setSelected] = useState(null);
@@ -203,10 +224,13 @@ export default function App() {
   const [formNotice, setFormNotice] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([{ role: "assistant", text: "Hi! I’m Umar AI, a profile-based guide. Ask about projects, skills, education, or experience." }]);
+  const [messages, setMessages] = useState([{ role: "assistant", text: "Hi! I’m the portfolio guide. Ask about projects, skills, education, or experience." }]);
   const [chatMinimized, setChatMinimized] = useState(false);
+  const caseRef = useRef(null);
+  const chatRef = useRef(null);
+  const turnstileRef = useRef(null);
 
-  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("mu-theme", theme); window.dispatchEvent(new Event("themechange")); }, [theme]);
+  useEffect(() => { document.documentElement.dataset.theme = theme; storeTheme(theme); window.dispatchEvent(new Event("themechange")); }, [theme]);
   useEffect(() => {
     const sections = nav.map(([, id]) => document.getElementById(id)).filter(Boolean);
     const observer = new IntersectionObserver((entries) => {
@@ -226,6 +250,36 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
   useEffect(() => { document.body.style.overflow = selected || menuOpen || chatOpen ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [selected, menuOpen, chatOpen]);
+  useEffect(() => {
+    const siteKey = process.env.REACT_APP_TURNSTILE_SITE_KEY;
+    if (!siteKey || !turnstileRef.current) return undefined;
+    let cancelled = false;
+    let timer;
+    const mount = () => {
+      if (cancelled || !turnstileRef.current || !window.turnstile) return;
+      turnstileRef.current.innerHTML = "";
+      window.turnstile.render(turnstileRef.current, { sitekey: siteKey, theme: "auto" });
+    };
+    if (window.turnstile) mount();
+    else {
+      timer = window.setInterval(() => {
+        if (window.turnstile) { window.clearInterval(timer); mount(); }
+      }, 300);
+      window.setTimeout(() => { if (timer) window.clearInterval(timer); }, 15000);
+    }
+    return () => { cancelled = true; if (timer) window.clearInterval(timer); };
+  }, []);
+  useEffect(() => {
+    const open = selected !== null || chatOpen;
+    if (!open) return undefined;
+    const previouslyFocused = document.activeElement;
+    const panel = selected !== null ? caseRef.current : chatRef.current;
+    const frame = requestAnimationFrame(() => panel?.focus());
+    return () => {
+      cancelAnimationFrame(frame);
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, [selected, chatOpen]);
 
   const goTo = (id) => {
     setMenuOpen(false);
@@ -245,11 +299,12 @@ export default function App() {
       }
       const result = await response.json();
       setNotificationSent(Boolean(result.emailSent)); setFormNotice(""); setFormState("sent"); formNode.reset();
+      try { window.turnstile?.reset(); } catch { /* widget may not be mounted */ }
     } catch (error) { setFormNotice(error.message || "Couldn’t send right now. Please try again in a moment."); setFormState("error"); }
   };
   const getUmarAnswer = (raw) => {
     const q = raw.toLowerCase();
-    if (/who are you|your name|are you (an? )?(ai|bot|human)/.test(q)) return "I’m Umar AI, a profile-based assistant on Mohammad Umar’s portfolio. I’m not Umar himself; I answer questions about his professional journey.";
+    if (/who are you|your name|are you (an? )?(ai|bot|human)/.test(q)) return "I’m the portfolio guide, a profile-based assistant on Mohammad Umar’s portfolio. I’m not Umar himself; I answer questions about his professional journey.";
     if (/project|studyvault|library|amtul|predictor|academicai|portfolio/.test(q)) return "Umar's projects include StudyVault, a student performance prediction app, Amtul Noor Library's full-stack management platform, and this portfolio. Open a project case study for details and live/source links.";
     if (/skill|stack|technology|technologies|know/.test(q)) return "His toolkit includes C++, JavaScript, Python, React, Next.js, Tailwind CSS, Node.js, Express, Firebase, and machine-learning tools such as Pandas, NumPy, and scikit-learn.";
     if (/study|education|university|college|degree/.test(q)) return "Umar is pursuing a B.Tech in Computer Science and Engineering, graduating in 2027.";
@@ -268,22 +323,22 @@ export default function App() {
     setQuestion("");
   };
   const askUmar = (event) => { event.preventDefault(); submitQuestion(question); };
-  const newChat = () => { setMessages([{ role: "assistant", text: "Hi! I’m Umar AI, a profile-based guide. Ask about projects, skills, education, or experience." }]); setQuestion(""); };
+  const newChat = () => { setMessages([{ role: "assistant", text: "Hi! I’m the portfolio guide. Ask about projects, skills, education, or experience." }]); setQuestion(""); };
 
   return <MotionConfig reducedMotion="user"><div className="portfolio min-h-screen">
     <CursorEffects />
     <div className="site-intro" aria-hidden="true"><span>MU</span></div>
     <a className="skip-link" href="#main">Skip to content</a>
     <header className="site-nav"><div className="nav-inner">
-      <a href="#/home" className="brand" aria-label="Mohammad Umar, home" data-cursor="link"><BrandMark /><span>Mohammad Umar</span></a>
+      <a href="#/home" className="brand" onClick={(event) => { event.preventDefault(); goTo("home"); }} aria-label="Mohammad Umar, home" data-cursor="link"><BrandMark /><span>Mohammad Umar</span></a>
       <nav className="main-nav hidden items-center gap-8 xl:flex" aria-label="Main navigation">{nav.map(([label, id]) => <a key={id} className={`nav-link ${active === id ? "is-active" : ""}`} href={`#/${id}`} onClick={() => goTo(id)} aria-current={active === id ? "page" : undefined}>{label}</a>)}</nav>
-      <div className="nav-actions"><button className="assistant-nav-trigger assistant-nav-compact magnetic" onClick={() => { setChatOpen(true); setChatMinimized(false); }} aria-haspopup="dialog" aria-expanded={chatOpen} aria-label="Open Ask Umar AI" data-cursor="link"><span className="assistant-nav-spark" aria-hidden="true">✳</span><span className="assistant-label-full">Ask Umar AI</span><span className="assistant-label-short">Ask AI</span></button><button className="icon-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>{theme === "dark" ? "☼" : "◐"}</button><button className="menu-toggle xl:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}><span className="menu-lines" aria-hidden="true" /></button></div>
+      <div className="nav-actions"><button className="assistant-nav-trigger assistant-nav-compact magnetic" onClick={() => { setChatOpen(true); setChatMinimized(false); }} aria-haspopup="dialog" aria-expanded={chatOpen} aria-label="Open the portfolio guide" data-cursor="link"><span className="assistant-nav-spark" aria-hidden="true">✳</span><span className="assistant-label-full">Ask about Umar</span><span className="assistant-label-short">Ask</span></button><button className="icon-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>{theme === "dark" ? "☼" : "◐"}</button><button className="menu-toggle xl:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}><span className="menu-lines" aria-hidden="true" /></button></div>
     </div></header>
     <AnimatePresence>{menuOpen && <motion.nav className="mobile-menu xl:hidden" initial={{ clipPath: "inset(0 0 100% 0)" }} animate={{ clipPath: "inset(0)" }} exit={{ clipPath: "inset(0 0 100% 0)" }} aria-label="Mobile navigation">{nav.map(([label, id], i) => <a key={id} style={{ "--i": i }} href={`#/${id}`} onClick={() => goTo(id)} aria-current={active === id ? "page" : undefined}>{label}<Arrow diagonal /></a>)}</motion.nav>}</AnimatePresence>
     <main id="main">
       <section id="home" className="hero wrap section-shell" aria-label="Introduction"><div className="hero-heading"><h1 aria-label="Mohammad Umar"><span className="hero-line"><span>Mohammad</span></span><span className="hero-line"><span className="hero-accent">Umar.</span></span></h1><div className="sculpture"><HeroSculpture /></div><p className="hero-role">Computer Science undergraduate</p></div>
         <div className="hero-kicker"><a className="hero-status" href="#/contact" onClick={(event) => { event.preventDefault(); goTo("contact"); }}><span className="availability-dot" /><span>Open to internships and collaborations</span><Arrow diagonal /></a></div>
-        <div className="hero-bottom"><div className="hero-intro"><p className="hero-tagline">Engineering ideas into experiences.</p><p>I build clear, useful software across web development and machine learning—from student tools to real-world platforms.</p><div className="hero-actions"><a className="button button-primary magnetic" href="#/projects" onClick={(event) => { event.preventDefault(); goTo("projects"); }}>Explore my work <Arrow /></a><button className="button magnetic" type="button" onClick={() => { setChatOpen(true); setChatMinimized(false); }}>Ask Umar AI</button></div></div><aside className="hero-side"><dl><div><dt>Projects</dt><dd>04 <span>web + ML</span></dd></div><div><dt>Internships</dt><dd>03 <span>hands-on roles</span></dd></div><div><dt>Problem solving</dt><dd>150+ <span>LeetCode problems</span></dd></div></dl></aside></div>
+        <div className="hero-bottom"><div className="hero-intro"><p className="hero-tagline">Engineering ideas into experiences.</p><p>I build clear, useful software across web development and machine learning—from student tools to real-world platforms.</p><div className="hero-actions"><a className="button button-primary magnetic" href="#/projects" onClick={(event) => { event.preventDefault(); goTo("projects"); }}>Explore my work <Arrow /></a><button className="button magnetic" type="button" onClick={() => { setChatOpen(true); setChatMinimized(false); }}>Ask about Umar</button></div></div><aside className="hero-side"><dl><div><dt>Projects</dt><dd>04 <span>web + ML</span></dd></div><div><dt>Internships</dt><dd>03 <span>hands-on roles</span></dd></div><div><dt>Problem solving</dt><dd>150+ <span>LeetCode problems</span></dd></div></dl></aside></div>
       </section>
 
       <section id="about" className="section-shell wrap"><SectionTitle eyebrow="About">Curiosity drives what I build.</SectionTitle><div className="about-grid"><aside className="about-side details-card" aria-label="Selected details"><div className="details-card-top"><div><p className="mono-label">Selected details</p><span className="details-card-label">A little about me</span></div><BrandMark /></div><div className="details-field"><span className="details-index">01 <i>/</i> DEGREE</span><h3>B.Tech</h3><p>Computer Science and Engineering</p></div><div className="details-field details-interests"><span className="details-index">02 <i>/</i> INTERESTS</span><div className="details-tags"><span>Full-stack</span><span>AI &amp; machine learning</span><span>Problem solving</span></div></div><div className="details-card-bottom"><span>Currently learning</span><strong><span className="availability-dot" />ServiceNow</strong></div></aside><div className="about-main"><div className="statement"><p>I’m a Computer Science undergraduate who enjoys exploring how technology works and using that understanding to create useful products.</p><p>My interests are full-stack development, AI and machine learning, and problem solving.</p></div><div className="principles"><article><span>01</span><h3>Technical foundation</h3><p>Building a strong base in data structures, algorithms, object-oriented programming, and full-stack development.</p></article><article><span>02</span><h3>Currently learning</h3><p>I’ve been placed at Bangmetric and am currently learning ServiceNow, the platform Bangmetric works with.</p></article><article><span>03</span><h3>How I work</h3><p>I like turning real needs into clear, reliable software and learning by shipping useful things.</p></article></div></div></div></section>
@@ -296,10 +351,10 @@ export default function App() {
 
       <section id="achievements" className="section-shell wrap proof-section"><motion.div className="proof-big" initial={{ opacity: 0, scale: .92 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: .85 }}><span>150</span><span className="proof-plus">+</span><p>LeetCode problems<br />solved</p></motion.div><div className="proof-content"><Eyebrow>Achievements and learning</Eyebrow><h2 className="section-title">Practice, every day.</h2><div className="proof-list"><article><span>01</span><div><h3>DSA practice in C++</h3><p>Regular problem solving across core data structures and algorithms.</p></div></article><article><span>02</span><div><h3>Technical certifications</h3><p>Courses completed alongside university coursework.</p></div></article><article><span>03</span><div><h3>Hackathon participation</h3><p>Building and shipping ideas against the clock with other students.</p></div></article><article><span>04</span><div><h3>Continuous learning</h3><p>Always working through the next framework, concept, or problem set.</p></div></article></div></div></section>
 
-      <section id="contact" className="contact-section"><div className="wrap"><Eyebrow>06 / Start a conversation</Eyebrow><h2 className="contact-title">Have an idea<br />worth building<span className="accent-dot">?</span></h2><div className="contact-grid"><div><p className="contact-lead">I’m interested in meaningful projects, thoughtful technical challenges, and opportunities to learn and collaborate.</p><a className="social-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">Find me on GitHub <Arrow diagonal /></a></div><form className="contact-form" onSubmit={submitContact}><input className="contact-honey" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" /><label>Your name<input name="name" autoComplete="name" required maxLength="80" placeholder="What should I call you?" /></label><label>Email address<input type="email" name="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label><label>What’s on your mind?<select name="topic"><option>Project idea</option><option>Internship opportunity</option><option>Collaboration</option><option>Just saying hello</option></select></label><label>Message<textarea name="message" rows="4" required minLength="10" maxLength="4000" placeholder="A little context goes a long way…" /></label>{process.env.REACT_APP_TURNSTILE_SITE_KEY && <div className="cf-turnstile" data-sitekey={process.env.REACT_APP_TURNSTILE_SITE_KEY} data-theme="auto" />}<div className="form-bottom"><button className="button button-primary" type="submit" disabled={formState === "sending"}>{formState === "sending" ? "Sending…" : "Send a message"}<Arrow /></button><p role="status" className={`form-status ${formState}`}>{formState === "sent" ? notificationSent ? "Thanks — your message was saved and sent to my inbox." : "Thanks — your message was received." : formState === "error" ? formNotice : "I’ll follow up using your email address."}</p></div></form></div></div></section>
+      <section id="contact" className="contact-section"><div className="wrap"><Eyebrow>06 / Start a conversation</Eyebrow><h2 className="contact-title">Have an idea<br />worth building<span className="accent-dot">?</span></h2><div className="contact-grid"><div><p className="contact-lead">I’m interested in meaningful projects, thoughtful technical challenges, and opportunities to learn and collaborate.</p><a className="social-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">Find me on GitHub <Arrow diagonal /></a></div><form className="contact-form" onSubmit={submitContact}><input className="contact-honey" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" /><label>Your name<input name="name" autoComplete="name" required maxLength="80" placeholder="What should I call you?" /></label><label>Email address<input type="email" name="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label><label>What’s on your mind?<select name="topic"><option>Project idea</option><option>Internship opportunity</option><option>Collaboration</option><option>Just saying hello</option></select></label><label>Message<textarea name="message" rows="4" required minLength="10" maxLength="4000" placeholder="A little context goes a long way…" /></label>{process.env.REACT_APP_TURNSTILE_SITE_KEY && <div className="cf-turnstile" ref={turnstileRef} />}<div className="form-bottom"><button className="button button-primary" type="submit" disabled={formState === "sending"}>{formState === "sending" ? "Sending…" : "Send a message"}<Arrow /></button><p role="status" className={`form-status ${formState}`}>{formState === "sent" ? notificationSent ? "Thanks — your message was saved and sent to my inbox." : "Thanks — your message was received." : formState === "error" ? formNotice : "I’ll follow up using your email address."}</p></div></form></div></div></section>
     </main>
     <footer className="site-footer wrap" aria-label="Portfolio footer"><a className="brand" href="#/home" onClick={(event) => { event.preventDefault(); goTo("home"); }}><BrandMark /><span>Mohammad Umar</span></a><div className="footer-info"><nav className="footer-socials" aria-label="Social and contact links"><a href="mailto:umar24nov@gmail.com">Email</a><a href="https://www.linkedin.com/in/mohammadumarfarook" target="_blank" rel="noreferrer">LinkedIn <Arrow diagonal /></a><a href="https://leetcode.com/u/umar24nov/" target="_blank" rel="noreferrer">LeetCode <Arrow diagonal /></a></nav><div className="footer-credit"><span>© {new Date().getFullYear()} Mohammad Umar</span><span>Designed &amp; developed by Mohammad Umar</span></div></div></footer><a className="floating-contact" href="#/contact" onClick={(event) => { event.preventDefault(); goTo("contact"); }}>Get in touch <Arrow diagonal /></a>
-    <AnimatePresence>{chatOpen && <motion.div className="assistant-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) setChatOpen(false); }}><motion.section className={`assistant-panel ${chatMinimized ? "is-minimized" : ""}`} initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .2 }} role="dialog" aria-modal="true" aria-labelledby="assistant-title"><div className="assistant-head"><div><p className="mono-label">Profile-based demo</p><h2 id="assistant-title">Umar AI</h2></div><div className="assistant-controls"><button className="icon-button" onClick={newChat} aria-label="Start a new chat">↻</button><button className="icon-button" onClick={() => setChatMinimized(!chatMinimized)} aria-label={chatMinimized ? "Expand assistant" : "Minimize assistant"}>{chatMinimized ? "+" : "−"}</button><button className="icon-button" onClick={() => setChatOpen(false)} aria-label="Close assistant">×</button></div></div>{!chatMinimized && <><div className="assistant-messages" aria-live="polite">{messages.map((message, index) => <p key={`${index}-${message.role}`} className={`assistant-message ${message.role}`}>{message.text}</p>)}</div><div className="assistant-prompts">{["What projects have you built?", "Tell me about your education", "What skills do you use?", "What is your experience?"].map((prompt) => <button key={prompt} onClick={() => submitQuestion(prompt)}>{prompt}</button>)}</div><form className="assistant-form" onSubmit={askUmar}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about Umar…" maxLength={240} aria-label="Ask about Umar" /><button aria-label="Send question"><Arrow /></button></form><p className="assistant-note">Demo mode · Answers are based on the portfolio profile.</p></>}</motion.section></motion.div>}</AnimatePresence>
-    <AnimatePresence>{selected !== null && <motion.div className="case-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}><motion.article className="case-panel" initial={{ y: 42, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 28, opacity: 0 }} role="dialog" aria-modal="true" aria-labelledby="case-title"><div className="case-top"><span className="mono-label">Case study · {String(selected + 1).padStart(2, "0")} / {String(projects.length).padStart(2, "0")}</span><button className="icon-button" onClick={() => setSelected(null)} aria-label="Close case study">×</button></div><div className={`case-visual art-${selected + 1}`}><ProjectArtwork index={selected} title={projects[selected].name} /></div><Eyebrow>{projects[selected].kind}</Eyebrow><h2 id="case-title" className="case-title">{projects[selected].name}</h2><div className="case-copy"><div><h3>Overview</h3><p>{projects[selected].details}</p></div><div><h3>Highlights</h3><ul>{projects[selected].features.map((feature) => <li key={feature}>{feature}</li>)}</ul></div><div><h3>Built with</h3><ul className="tag-list">{projects[selected].stack.map((tag) => <li key={tag}>{tag}</li>)}</ul></div></div><div className="case-links"><a className="text-link" href={projects[selected].github} target="_blank" rel="noreferrer">GitHub profile <Arrow diagonal /></a>{projects[selected].href.startsWith("http") && <a className="text-link" href={projects[selected].href} target="_blank" rel="noreferrer">Visit project <Arrow diagonal /></a>}</div><button className="case-next" onClick={() => setSelected((selected + 1) % projects.length)}>Next project <Arrow /></button></motion.article></motion.div>}</AnimatePresence>
+    <AnimatePresence>{chatOpen && <motion.div className="assistant-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) setChatOpen(false); }}><motion.section ref={chatRef} tabIndex={-1} onKeyDown={(event) => trapFocus(event, chatRef.current)} className={`assistant-panel ${chatMinimized ? "is-minimized" : ""}`} initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .2 }} role="dialog" aria-modal="true" aria-labelledby="assistant-title"><div className="assistant-head"><div><p className="mono-label">Profile-based demo</p><h2 id="assistant-title">Portfolio guide</h2></div><div className="assistant-controls"><button className="icon-button" onClick={newChat} aria-label="Start a new chat">↻</button><button className="icon-button" onClick={() => setChatMinimized(!chatMinimized)} aria-label={chatMinimized ? "Expand assistant" : "Minimize assistant"}>{chatMinimized ? "+" : "−"}</button><button className="icon-button" onClick={() => setChatOpen(false)} aria-label="Close assistant">×</button></div></div>{!chatMinimized && <><div className="assistant-messages" aria-live="polite">{messages.map((message, index) => <p key={`${index}-${message.role}`} className={`assistant-message ${message.role}`}>{message.text}</p>)}</div><div className="assistant-prompts">{["What projects have you built?", "Tell me about your education", "What skills do you use?", "What is your experience?"].map((prompt) => <button key={prompt} onClick={() => submitQuestion(prompt)}>{prompt}</button>)}</div><form className="assistant-form" onSubmit={askUmar}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about Umar…" maxLength={240} aria-label="Ask about Umar" /><button aria-label="Send question"><Arrow /></button></form><p className="assistant-note">Demo mode · Answers are based on the portfolio profile.</p></>}</motion.section></motion.div>}</AnimatePresence>
+    <AnimatePresence>{selected !== null && <motion.div className="case-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}><motion.article ref={caseRef} tabIndex={-1} onKeyDown={(event) => trapFocus(event, caseRef.current)} className="case-panel" initial={{ y: 42, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 28, opacity: 0 }} role="dialog" aria-modal="true" aria-labelledby="case-title"><div className="case-top"><span className="mono-label">Case study · {String(selected + 1).padStart(2, "0")} / {String(projects.length).padStart(2, "0")}</span><button className="icon-button" onClick={() => setSelected(null)} aria-label="Close case study">×</button></div><div className={`case-visual art-${selected + 1}`}><ProjectArtwork index={selected} title={projects[selected].name} /></div><Eyebrow>{projects[selected].kind}</Eyebrow><h2 id="case-title" className="case-title">{projects[selected].name}</h2><div className="case-copy"><div><h3>Overview</h3><p>{projects[selected].details}</p></div><div><h3>Highlights</h3><ul>{projects[selected].features.map((feature) => <li key={feature}>{feature}</li>)}</ul></div><div><h3>Built with</h3><ul className="tag-list">{projects[selected].stack.map((tag) => <li key={tag}>{tag}</li>)}</ul></div></div><div className="case-links"><a className="text-link" href={projects[selected].github} target="_blank" rel="noreferrer">GitHub profile <Arrow diagonal /></a>{projects[selected].href.startsWith("http") && <a className="text-link" href={projects[selected].href} target="_blank" rel="noreferrer">Visit project <Arrow diagonal /></a>}</div><button className="case-next" onClick={() => setSelected((selected + 1) % projects.length)}>Next project <Arrow /></button></motion.article></motion.div>}</AnimatePresence>
   </div></MotionConfig>;
 }
