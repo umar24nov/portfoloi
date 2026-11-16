@@ -8,21 +8,21 @@ The target deployment is one Cloudflare Worker: React's production build is serv
 - The contact form sends JSON to `POST /api/contact` on the same origin. No separate public API host or database connection string is needed in the browser.
 - `server/cloudflare-worker.js` is the production backend. It exposes the Express routes through the Cloudflare Workers adapter, checks form fields and the hidden honeypot, applies an IP-hash-based hourly limit, optionally verifies Turnstile, and writes accepted submissions to D1 using prepared SQL.
 - D1 is a managed SQLite database. The `migrations/` SQL files define its schema; apply them with the Wrangler migration commands below. Email is a notification side effect through the `EMAIL` binding, not the source of truth. A message can be stored even when email delivery is unavailable.
-- The older `server/server.js`, Mongoose models, and controllers are a separate legacy Node/Mongo implementation. The Cloudflare Worker does not import or use that backend; `npm run legacy:server` is only for working on that old server. The active local workflow is `npm run cf:dev`.
-- The portfolio's “Ask Umar AI” is an offline, profile-based question/answer guide in the frontend. It does not call an LLM or send prompts to a server.
+- The Vercel serverless function in `api/contact.js` is the production contact handler for the live domain. It validates fields, checks the hidden honeypot, optionally verifies Turnstile, and sends the notification through Resend. The Worker described here is the D1-backed alternative.
+- The portfolio guide is an offline, profile-based question/answer feature in the frontend. It does not call an LLM or send prompts to a server.
 
 The old `vercel.json` deployment configuration has been removed from the Cloudflare migration. Also disconnect or disable any Vercel Git integration in the Vercel dashboard if it remains connected; removing the file in Git cannot change account-level integrations.
 
 ### What is running before Cloudflare is configured
 
-The GitHub commit currently reports a successful Vercel deployment, so the Vercel Git integration is still active. In that deployment, `api/contact.js` is a Vercel serverless function that sends the submitted message through Resend; it does not write to a database. The separate `server/server.js` plus Mongoose models describe an older MongoDB backend and are not automatically part of the current Vercel or Cloudflare deployment. After Cloudflare is configured, the Worker replaces that contact endpoint with D1-backed storage and optional Cloudflare Email Service notifications. The visitor's browser never connects directly to D1 or MongoDB.
+Vercel remains the production host: pushing to `main` deploys the React build and the `api/*` functions, and `api/contact.js` sends submissions through Resend without writing to a database. The Cloudflare Worker replaces that contact endpoint with D1-backed storage and optional Cloudflare Email Service notifications once it is promoted. The visitor's browser never connects directly to D1.
 
 ## 1. Create and connect your Cloudflare account
 
 1. Sign in or create an account at [Cloudflare](https://dash.cloudflare.com/).
 2. In a terminal, from this repository, run `npm ci`.
 3. Log in to Wrangler with `npx wrangler login`.
-4. Create the database with `npm run cf:db:create`. Wrangler prints a UUID. Copy it into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
+4. Create the database with `npm run cf:db:create` if the one in `wrangler.jsonc` does not exist yet. Wrangler prints a UUID; put it in `wrangler.jsonc` as `database_id`.
 5. Keep the configured database name `mohammad-umar-portfolio` unchanged, or update it consistently in `wrangler.jsonc`, `package.json`, and `.github/workflows/deploy-cloudflare.yml`.
 
 ### Bootstrap the first Worker
@@ -121,4 +121,4 @@ The `workers.dev` URL works without a custom domain. To use your own domain, add
 | React build variable | `REACT_APP_API_URL` | No | Leave unset for this same-origin Worker API; the app defaults to `/api`. |
 | Local `.dev.vars` | `IP_HASH_SALT` and optional Worker secrets | Only for local Worker development | Local-only values; copy `.dev.vars.example` and replace its placeholders. |
 
-The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. This repository's older Firebase, MongoDB, Resend, and Vercel API files are legacy code and are not required by the Cloudflare Worker. The separate `commit-monitor.yml` workflow still calls the former portfolio domain and has not been migrated to this Worker.
+The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. The separate `commit-monitor.yml` workflow calls the live portfolio domain; keep it pointed at whichever host serves `/api/check-github`.

@@ -1,132 +1,107 @@
-# 🌐 Mohd Umar — Personal Portfolio
+# Mohammad Umar — Personal Portfolio
 
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38BDF8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
-[![Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?style=flat-square&logo=vercel)](https://vercel.com)
-[![License](https://img.shields.io/badge/License-MIT-00d4ff?style=flat-square)](LICENSE)
-[![Portfolio](https://img.shields.io/badge/Live-Portfolio-ff6b35?style=flat-square)](https://www.mohammadumarportfoloi.online/)
+Personal portfolio of **Mohammad Umar**, a Computer Science undergraduate at COER University (graduating 2027) building full-stack products, polished interfaces, and practical machine-learning projects.
 
----
-
-## 👤 About
-
-This is the personal portfolio of **Mohd Umar**, a B.Tech Computer Science fresher passionate about Development and Machine Learning. This site serves as a showcase of projects, skills, and open-source activity.
-
-- 📧 [umar24nov@gmail.com](mailto:umar24nov@gmail.com)
-- 💼 [linkedin.com/in/mohammadumarfarook](https://www.linkedin.com/in/mohammadumarfarook)
-- 🐙 [github.com/umar24nov](https://github.com/umar24nov)
+- **Live site:** https://www.mohammadumarportfoloi.online/
+- **GitHub:** https://github.com/umar24nov
+- **LinkedIn:** https://www.linkedin.com/in/mohammadumarfarook
+- **Email:** umar24nov@gmail.com
 
 ---
 
-## 📁 What This Repo Contains
+## What's in the repo
 
 ```
 my-portfolio/
 ├── public/
-│   ├── favicon.svg             # Browser tab logo (MU monogram)
-│   └── index.html              # SPA shell
+│   ├── index.html          # SPA shell, meta tags, theme bootstrap, JSON-LD
+│   ├── og-image.png        # Social share card (1200x630)
+│   ├── favicon.svg
+│   ├── site.webmanifest
+│   └── robots.txt
 ├── src/
-│   ├── App.jsx                 # Root — composes all sections
-│   ├── index.js                # React entry point
-│   ├── index.css               # Tailwind imports + global reset
-│   ├── config/                 # Constants, projects, skills, timeline, Firebase, API
-│   ├── context/                # ThemeContext (light/dark)
-│   ├── hooks/                  # useTypewriter
-│   ├── styles/animations.css   # Full design system (palette, fonts, utilities)
-│   ├── components/
-│   │   ├── layout/             # Navbar, Footer, AnimatedCanvas
-│   │   ├── sections/           # Hero, About, Projects, Skills, Education, Contact, ...
-│   │   ├── ui/                 # Section, Chip, SkillBar, LottieCube, ...
-│   │   └── feedback/           # Feedback button + modal
-├── server/                     # Express API (feedback, rate limiting, validation)
-├── vercel.json                 # Build/output config for Vercel
-├── tailwind.config.js          # Tailwind content paths
-├── package.json                # Dependencies & scripts
-└── README.md                   # You are here
+│   ├── App.jsx             # The whole site: sections, case studies, portfolio guide, contact form
+│   ├── index.css           # Design system and layout (Tailwind + custom CSS)
+│   ├── index.js            # React entry point
+│   ├── App.test.js         # Smoke tests
+│   └── reportWebVitals.js
+├── api/
+│   ├── contact.js          # Vercel serverless function: validation, Turnstile, Resend email
+│   └── check-github.js     # GitHub activity monitor endpoint
+├── server/
+│   ├── cloudflare-worker.js  # Optional Cloudflare Worker backend (D1 + Email)
+│   └── migrations/           # D1 schema
+├── .github/workflows/      # CI, commit monitor, optional Cloudflare deploy
+├── wrangler.jsonc          # Cloudflare Worker configuration
+└── CLOUDFLARE.md           # Cloudflare deployment notes
 ```
 
----
-
-## 🗂️ Sections
-
-| # | Section | Description |
-|---|---------|-------------|
-| 01 | **Hero** | Typewriter intro, name, CTAs, Download CV + rotating Lottie cube backdrops |
-| 02 | **About** | Bio, highlight stat cards, social links |
-| 03 | **Projects** | StudyVault, Performance Predictor, Portfolio — Live Demo + GitHub links |
-| 04 | **Skills** | Animated skill bars (Languages, Frontend, Backend) + chip tags (ML, DB, Tools) |
-| 05 | **Code Signature** | Syntax-highlighted Python snippet showing personality & philosophy |
-| 06 | **Education** | Glowing dot timeline |
-| 07 | **Contact** | Email, GitHub, LinkedIn link cards + working feedback form (API) |
-| 08 | **GitHub Activity** | Live contribution graph, streak stats, top languages |
+The UI is a single-page experience defined in `src/App.jsx` and styled by `src/index.css`. There is no client-side router; sections are scrolled to via `#/section` hashes.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech stack
 
 | Layer | Technology |
-|-------|-----------|
-| UI Framework | React 18 |
-| Styling | Tailwind CSS v3 |
-| Animations | Framer Motion, CSS `@keyframes`, Lottie (`lottie-react`) |
-| Fonts | JetBrains Mono, Inter, Fira Code (Google Fonts) |
-| Backend | Express (feedback API — validation, rate limiting, helmet) |
-| Database | Firebase / MongoDB (Mongoose) |
-| Forms | react-hook-form |
-| GitHub Stats | [github-readme-stats](https://github.com/anuraghazra/github-readme-stats) |
-| Contribution Graph | [github-readme-activity-graph](https://github.com/Ashutosh00710/github-readme-activity-graph) |
-| Deployment | Vercel |
+|-------|------------|
+| UI | React 18 |
+| Styling | Tailwind CSS 3 + custom CSS |
+| Animation | Framer Motion, canvas |
+| Contact form | Vercel serverless function + Resend |
+| Bot protection | Cloudflare Turnstile |
+| Optional backend | Cloudflare Worker, D1, Email |
+| Hosting | Vercel (production) |
 
 ---
 
-## ✨ Features
-
-- 🎨 Neon Grid design system — warm gradient (orange → magenta → purple) + neon green on near-black, light/dark modes
-- 🔷 Rotating Lottie wireframe cubes flanking the hero name
-- ⌨️ Typewriter effect cycling through roles
-- 📜 Scroll-triggered reveal animations on every section
-- 📊 Animated skill bars that fill on scroll
-- 🖥️ Fake VS Code editor (Code Signature section)
-- 🐛 Working Report/Feedback modal with type selector backed by an Express API
-- 📈 Live GitHub contribution graph + stats
-- 📱 Fully responsive — mobile, tablet, desktop
-- ⬇️ Download CV button
-
----
-
-## 🚀 Projects Showcased
-
-### 📚 StudyVault
-AI-powered study companion. Centralises notes, generates summaries, flashcards and quizzes from uploaded PDFs.
-`React` `Node.js` `MongoDB` `OpenAI API` `Express` `Cloudinary`
-
-### 📊 Performance Predictor
-ML model that analyses student data to predict academic performance and flag at-risk students early.
-`Python` `Scikit-learn` `Pandas` `NumPy` `Flask` `MySQL`
-
-### 🌐 Portfolio Website
-This site. React portfolio with Lottie animations, scroll reveals and GitHub stats.
-`React` `Tailwind CSS` `Framer Motion` `Lottie`
-
----
-
-## 🚦 Scripts
+## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm start` | Run the React dev server |
-| `npm run build` | Production build to `build/` |
-| `npm test` | Run tests |
-| `npm run server` | Run the Express feedback API |
-| `npm run dev` | Run frontend + API concurrently |
-| `npm run install-all` | Install root + server dependencies |
+| `npm start` | Start the dev server at http://localhost:3000 |
+| `npm run build` | Production build into `build/` |
+| `npm test` | Run the test suite |
+| `npm run dev` | Build and run the Cloudflare Worker locally with Wrangler |
+| `npm run cf:deploy` | Build and deploy the Worker and static assets to Cloudflare |
+| `npm run cf:migrate:local` | Apply D1 migrations to the local database |
+| `npm run cf:migrate:remote` | Apply D1 migrations to the remote database |
 
 ---
 
-## 📄 License
+## Environment variables
 
-This portfolio is open for inspiration. Please do not copy it wholesale and present it as your own.
+### Vercel (contact form)
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `RESEND_API_KEY` | yes | Resend API key used to send notification email |
+| `CONTACT_TO` | no | Destination inbox (defaults to `umar24nov@gmail.com`) |
+| `RESEND_FROM` | no | Verified sender (defaults to `onboarding@resend.dev`) |
+| `TURNSTILE_SECRET_KEY` | no | Enables server-side Turnstile verification |
+
+### Build-time (React)
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `REACT_APP_API_URL` | no | Override the API base URL (defaults to same origin) |
+| `REACT_APP_TURNSTILE_SITE_KEY` | no | Renders the Turnstile widget in the contact form |
+
+### Cloudflare Worker
+
+See `CLOUDFLARE.md` and `.dev.vars.example`. The Worker needs `DB`, `IP_HASH_SALT`, and optionally `TURNSTILE_SECRET`, `EMAIL`, `CONTACT_TO`, `CONTACT_FROM`.
 
 ---
 
-<p align="center">Designed & Built by <strong>Mohd Umar</strong> · 2025</p>
+## Deployment
+
+**Vercel is the production host** for the custom domain. Pushing to `main` triggers a Vercel deployment automatically.
+
+A Cloudflare Worker configuration is included as an alternative backend. Its GitHub workflow is manual (`workflow_dispatch`) so it does not compete with Vercel for production traffic.
+
+CI (`.github/workflows/ci.yml`) runs the tests and a production build on every push and pull request.
+
+---
+
+## License
+
+No open-source license is granted. The code is published for viewing and inspiration only; please do not copy it wholesale and present it as your own.
