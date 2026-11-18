@@ -1,5 +1,6 @@
 import express from "express";
 import { httpServerHandler } from "cloudflare:node";
+import { env } from "cloudflare:workers";
 
 const app = express();
 app.use(express.json({ limit: "12kb" }));
