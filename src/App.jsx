@@ -260,6 +260,7 @@ export default function App() {
       turnstileRef.current.innerHTML = "";
       window.turnstile.render(turnstileRef.current, { sitekey: siteKey, theme: "auto" });
     };
+    window.addEventListener("turnstile-ready", mount, { once: true });
     if (window.turnstile) mount();
     else {
       timer = window.setInterval(() => {
@@ -267,7 +268,11 @@ export default function App() {
       }, 300);
       window.setTimeout(() => { if (timer) window.clearInterval(timer); }, 15000);
     }
-    return () => { cancelled = true; if (timer) window.clearInterval(timer); };
+    return () => {
+      cancelled = true;
+      window.removeEventListener("turnstile-ready", mount);
+      if (timer) window.clearInterval(timer);
+    };
   }, []);
   useEffect(() => {
     const open = selected !== null || chatOpen;
