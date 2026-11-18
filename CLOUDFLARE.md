@@ -8,14 +8,14 @@ The target deployment is one Cloudflare Worker: React's production build is serv
 - The contact form sends JSON to `POST /api/contact` on the same origin. No separate public API host or database connection string is needed in the browser.
 - `server/cloudflare-worker.js` is the production backend. It exposes the Express routes through the Cloudflare Workers adapter, checks form fields and the hidden honeypot, applies an IP-hash-based hourly limit, optionally verifies Turnstile, and writes accepted submissions to D1 using prepared SQL.
 - D1 is a managed SQLite database. The `migrations/` SQL files define its schema; apply them with the Wrangler migration commands below. Email is a notification side effect through the `EMAIL` binding, not the source of truth. A message can be stored even when email delivery is unavailable.
-- The Vercel serverless function in `api/contact.js` is the production contact handler for the live domain. It validates fields, checks the hidden honeypot, optionally verifies Turnstile, and sends the notification through Resend. The Worker described here is the D1-backed alternative.
+- The Vercel serverless function in `api/contact.js` is the contact handler for the **legacy** `mohammadumarportfoloi.online` domain. It validates fields, checks the honeypot, optionally verifies Turnstile, and sends mail through Resend. The Worker below is the primary backend for `mohammadumar.site`.
 - The portfolio guide is an offline, profile-based question/answer feature in the frontend. It does not call an LLM or send prompts to a server.
 
-The old `vercel.json` deployment configuration has been removed from the Cloudflare migration. Also disconnect or disable any Vercel Git integration in the Vercel dashboard if it remains connected; removing the file in Git cannot change account-level integrations.
+The old `vercel.json` deployment configuration has been removed from the Cloudflare migration. Vercel's Git integration is still connected so the legacy `mohammadumarportfoloi.online` domain keeps working; it does not interfere with the Worker deployment.
 
 ### What is running before Cloudflare is configured
 
-Vercel remains the production host: pushing to `main` deploys the React build and the `api/*` functions, and `api/contact.js` sends submissions through Resend without writing to a database. The Cloudflare Worker replaces that contact endpoint with D1-backed storage and optional Cloudflare Email Service notifications once it is promoted. The visitor's browser never connects directly to D1.
+Cloudflare Workers is the primary production host at `https://mohammadumar.site/`: pushing to `main` deploys the React build and the Worker, and `server/cloudflare-worker.js` stores submissions in D1 and can send notifications through Cloudflare Email Service. Vercel continues to serve the older `mohammadumarportfoloi.online` domain from the same repository, where `api/contact.js` sends through Resend instead. The visitor's browser never connects directly to D1.
 
 ## 1. Create and connect your Cloudflare account
 
@@ -97,9 +97,11 @@ npm run cf:deploy
 
 After GitHub secrets are configured, the workflow handles remote migrations and deploys on every push to `main`.
 
-## 7. Optional custom domain
+## 7. Custom domain
 
-The `workers.dev` URL works without a custom domain. To use your own domain, add it to Cloudflare DNS, then open the deployed Worker in **Workers & Pages > your Worker > Settings > Domains & Routes** and add the custom domain.
+The live domain `mohammadumar.site` (and `www.mohammadumar.site`) is attached to the deployed Worker. To add another, open **Workers & Pages > your Worker > Settings > Domains & Routes** and add the hostname after its DNS points at Cloudflare.
+
+For Turnstile, add **both** `mohammadumar.site` and `www.mohammadumar.site` as allowed hostnames on the widget, otherwise the challenge can fail depending on which hostname the visitor used.
 
 ## What the app does
 
@@ -121,4 +123,4 @@ The `workers.dev` URL works without a custom domain. To use your own domain, add
 | React build variable | `REACT_APP_API_URL` | No | Leave unset for this same-origin Worker API; the app defaults to `/api`. |
 | Local `.dev.vars` | `IP_HASH_SALT` and optional Worker secrets | Only for local Worker development | Local-only values; copy `.dev.vars.example` and replace its placeholders. |
 
-The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. The separate `commit-monitor.yml` workflow calls the live portfolio domain; keep it pointed at whichever host serves `/api/check-github`.
+The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. The separate `commit-monitor.yml` workflow calls `https://www.mohammadumarportfoloi.online/api/check-github` because that endpoint exists only on the Vercel deployment; the Worker returns 404 for it. Keep that URL pointed at whichever host serves `/api/check-github`.

@@ -2,7 +2,7 @@
 
 Personal portfolio of **Mohammad Umar**, a Computer Science undergraduate at COER University (graduating 2027) building full-stack products, polished interfaces, and practical machine-learning projects.
 
-- **Live site:** https://www.mohammadumarportfoloi.online/
+- **Live site:** https://mohammadumar.site/
 - **GitHub:** https://github.com/umar24nov
 - **LinkedIn:** https://www.linkedin.com/in/mohammadumarfarook
 - **Email:** umar24nov@gmail.com
@@ -29,9 +29,9 @@ my-portfolio/
 │   ├── contact.js          # Vercel serverless function: validation, Turnstile, Resend email
 │   └── check-github.js     # GitHub activity monitor endpoint
 ├── server/
-│   ├── cloudflare-worker.js  # Optional Cloudflare Worker backend (D1 + Email)
+│   ├── cloudflare-worker.js  # Production backend (D1 + Email)
 │   └── migrations/           # D1 schema
-├── .github/workflows/      # CI, commit monitor, optional Cloudflare deploy
+├── .github/workflows/      # CI, commit monitor, Cloudflare deploy
 ├── wrangler.jsonc          # Cloudflare Worker configuration
 └── CLOUDFLARE.md           # Cloudflare deployment notes
 ```
@@ -47,10 +47,10 @@ The UI is a single-page experience defined in `src/App.jsx` and styled by `src/i
 | UI | React 18 |
 | Styling | Tailwind CSS 3 + custom CSS |
 | Animation | Framer Motion, canvas |
-| Contact form | Vercel serverless function + Resend |
+| Contact form | Cloudflare Worker + D1 + Email (Vercel function on the legacy domain) |
 | Bot protection | Cloudflare Turnstile |
-| Optional backend | Cloudflare Worker, D1, Email |
-| Hosting | Vercel (production) |
+| Data store | Cloudflare D1 (SQLite) |
+| Hosting | Cloudflare Workers (`mohammadumar.site`); Vercel (legacy domain) |
 
 ---
 
@@ -94,9 +94,9 @@ See `CLOUDFLARE.md` and `.dev.vars.example`. The Worker needs `DB`, `IP_HASH_SAL
 
 ## Deployment
 
-**Vercel is the production host** for the custom domain. Pushing to `main` triggers a Vercel deployment automatically.
+**Cloudflare Workers is the primary host** for https://mohammadumar.site/. Pushing to `main` runs CI and then deploys the Worker, its static assets, and D1 migrations. The Worker handles `/api/*`, including the D1-backed contact form.
 
-A Cloudflare Worker configuration is included as an alternative backend. Its GitHub workflow is manual (`workflow_dispatch`) so it does not compete with Vercel for production traffic.
+Vercel still serves the older `mohammadumarportfoloi.online` domain from the same repository; its `api/*` functions are the equivalent for that host. The scheduled commit monitor deliberately targets the Vercel domain because `/api/check-github` is only implemented there.
 
 CI (`.github/workflows/ci.yml`) runs the tests and a production build on every push and pull request.
 
