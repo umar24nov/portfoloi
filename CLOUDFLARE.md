@@ -1,21 +1,21 @@
 # Put the portfolio live on Cloudflare
 
-The target deployment is one Cloudflare Worker: React's production build is served as static assets, and the Express-compatible Worker entry point handles `/api/*`. D1 stores contact messages; the Worker can also validate Turnstile and email new submissions using Cloudflare Email Service.
+The target deployment is one Cloudflare Worker: React's production build is served as static assets, and the Express-compatible Worker entry point handles `/api/*`. D1 stores contact messages and the Worker validates Turnstile. Contact-form email delivery is disabled.
 
 ## Current backend and data flow
 
 - The browser loads the React single-page app from the Worker static asset binding (`build/`).
 - The contact form sends JSON to `POST /api/contact` on the same origin. No separate public API host or database connection string is needed in the browser.
 - `server/cloudflare-worker.js` is the production backend. It exposes the Express routes through the Cloudflare Workers adapter, checks form fields and the hidden honeypot, applies an IP-hash-based hourly limit, optionally verifies Turnstile, and writes accepted submissions to D1 using prepared SQL.
-- D1 is a managed SQLite database. The `migrations/` SQL files define its schema; apply them with the Wrangler migration commands below. Email is a notification side effect through the `EMAIL` binding, not the source of truth. A message can be stored even when email delivery is unavailable.
-- The Vercel serverless function in `api/contact.js` is the contact handler for the **legacy** `mohammadumarportfoloi.online` domain. It validates fields, checks the honeypot, optionally verifies Turnstile, and sends mail through Resend. The Worker below is the primary backend for `mohammadumar.site`.
+- D1 is a managed SQLite database. The `migrations/` SQL files define its schema; apply them with the Wrangler migration commands below. It is the source of truth for contact messages. The application intentionally sends no inbox email for contact submissions.
+- The Vercel serverless function in `api/contact.js` is the contact handler for the **legacy** `mohammadumarportfoloi.online` domain. It validates fields, checks the honeypot, and forwards the payload and Turnstile token to the primary Worker. It sends no email. The Worker below is the primary backend for `mohammadumar.site`.
 - The portfolio guide is an offline, profile-based question/answer feature in the frontend. It does not call an LLM or send prompts to a server.
 
 The old `vercel.json` deployment configuration has been removed from the Cloudflare migration. Vercel's Git integration is still connected so the legacy `mohammadumarportfoloi.online` domain keeps working; it does not interfere with the Worker deployment.
 
 ### What is running before Cloudflare is configured
 
-Cloudflare Workers is the primary production host at `https://mohammadumar.site/`: pushing to `main` deploys the React build and the Worker, and `server/cloudflare-worker.js` stores submissions in D1 and can send notifications through Cloudflare Email Service. Vercel continues to serve the older `mohammadumarportfoloi.online` domain from the same repository, where `api/contact.js` sends through Resend instead. The visitor's browser never connects directly to D1.
+Cloudflare Workers is the primary production host at `https://mohammadumar.site/`: pushing to `main` deploys the React build and the Worker, and `server/cloudflare-worker.js` stores submissions in D1. Contact-form email delivery is disabled. Vercel continues to serve the older `mohammadumarportfoloi.online` domain from the same repository, where `api/contact.js` forwards submissions to the primary Worker. The separate commit-digest email is unchanged and still sent by `/api/check-github` on Vercel through Resend. The visitor's browser never connects directly to D1.
 
 ## 1. Create and connect your Cloudflare account
 
@@ -35,23 +35,21 @@ Set the secrets for the deployed Worker (Wrangler prompts for each value):
 
 ```sh
 npx wrangler secret put IP_HASH_SALT
-npx wrangler secret put CONTACT_TO
-npx wrangler secret put CONTACT_FROM
 npx wrangler secret put TURNSTILE_SECRET
 ```
 
 - `IP_HASH_SALT`: a long random value used to hash IP addresses for the contact rate limit.
-- `CONTACT_TO`: your inbox address. It must be a verified destination in your Cloudflare Email Service account.
-- `CONTACT_FROM`: an address on a sender domain onboarded in Cloudflare Email Service.
 - `TURNSTILE_SECRET`: the secret key for the Turnstile widget. If you are not setting up Turnstile yet, skip this secret; the contact API will continue to use validation, a honeypot, and its hourly rate limit.
+
+Contact email secrets are no longer needed. `RESEND_API_KEY`, `CONTACT_TO`, and `RESEND_FROM` on Vercel are only used by the scheduled commit digest.
 
 For local development, copy `.dev.vars.example` to `.dev.vars` and fill the same values. `.dev.vars` is ignored by Git. To test without Turnstile, leave `TURNSTILE_SECRET` blank and leave the site key unset.
 
-## 3. Enable contact email delivery
+## 3. Contact messages are stored, not emailed
 
-Cloudflare Email Sending needs a domain using Cloudflare DNS. In the Cloudflare dashboard, open **Compute > Email Service > Email Sending**, onboard your domain, and publish/verify the suggested SPF, DKIM, and DMARC records. Add and verify the destination inbox for `CONTACT_TO`. The Worker already has the `EMAIL` send binding configured. Cloudflare documents the sender-domain and destination requirements in its [Email Service setup guide](https://developers.cloudflare.com/email-service/get-started/send-emails/).
+Contact-form email delivery is intentionally disabled on both hosts. Accepted submissions are stored in D1; no Cloudflare Email Service or Resend notification is sent for them. The `send_email` binding remains in `wrangler.jsonc` for compatibility but is unused.
 
-If you do not have a domain yet, the contact form still stores submissions in D1, but email notifications cannot be sent. You can inspect submissions with:
+You can inspect stored submissions with:
 
 ```sh
 npx wrangler d1 execute mohammad-umar-portfolio --remote --command "SELECT created_at, name, email, topic, message FROM contact_messages ORDER BY created_at DESC"
@@ -88,7 +86,7 @@ npm run cf:migrate:local
 npm run cf:dev
 ```
 
-Wrangler serves the site locally and uses a local D1 database. The `EMAIL` binding is configured as remote so email tests require an authenticated Cloudflare account and the Email Service sender/domain setup. Before the first production deployment, apply the initial D1 migration once:
+Wrangler serves the site locally and uses a local D1 database. Contact email is disabled, so no Email Service setup is needed for local testing. Before the first production deployment, apply the initial D1 migration once:
 
 ```sh
 npm run cf:migrate:remote
@@ -101,12 +99,12 @@ After GitHub secrets are configured, the workflow handles remote migrations and 
 
 The live domain `mohammadumar.site` (and `www.mohammadumar.site`) is attached to the deployed Worker. To add another, open **Workers & Pages > your Worker > Settings > Domains & Routes** and add the hostname after its DNS points at Cloudflare.
 
-For Turnstile, add **both** `mohammadumar.site` and `www.mohammadumar.site` as allowed hostnames on the widget, otherwise the challenge can fail depending on which hostname the visitor used.
+For Turnstile, add `mohammadumar.site`, `www.mohammadumar.site`, `mohammadumarportfoloi.online`, and `www.mohammadumarportfoloi.online` as allowed hostnames on the widget, otherwise the challenge can fail depending on which hostname the visitor used.
 
 ## What the app does
 
 - `GET /api/health` returns Worker API health.
-- `POST /api/contact` validates and rate-limits submissions, stores them in D1, verifies Turnstile when configured, and sends an inbox notification when Email Service secrets are configured.
+- `POST /api/contact` validates and rate-limits submissions, verifies Turnstile when configured, and stores them in D1. It does not send contact email.
 - Unmatched app routes fall back to React for single-page navigation.
 - The portfolio Q&A panel is an offline, rule-based guide over the visible portfolio data; it does not call a hosted AI model.
 
@@ -119,8 +117,9 @@ For Turnstile, add **both** `mohammadumar.site` and `www.mohammadumar.site` as a
 | Worker secret | `IP_HASH_SALT` | Yes for contact submissions | Salt used to hash IP addresses for the rate limit. |
 | Worker secret | `TURNSTILE_SECRET` | Only if enabling Turnstile | Server-side verification key. Pair it with the public site key below. |
 | GitHub Actions variable | `REACT_APP_TURNSTILE_SITE_KEY` | Only if enabling Turnstile | Public key rendered by the React contact form at build time. |
-| Worker secrets | `CONTACT_TO`, `CONTACT_FROM` | Only if enabling email notifications | Verified recipient and sender for Cloudflare Email Service. Both are needed for sending. |
 | React build variable | `REACT_APP_API_URL` | No | Leave unset for this same-origin Worker API; the app defaults to `/api`. |
 | Local `.dev.vars` | `IP_HASH_SALT` and optional Worker secrets | Only for local Worker development | Local-only values; copy `.dev.vars.example` and replace its placeholders. |
+
+Contact-form email delivery is disabled on both hosts. The `send_email` binding remains in `wrangler.jsonc` for compatibility but is unused. `RESEND_API_KEY` on Vercel is still required for the scheduled commit digest.
 
 The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. The separate `commit-monitor.yml` workflow calls `https://www.mohammadumarportfoloi.online/api/check-github` because that endpoint exists only on the Vercel deployment; the Worker returns 404 for it. Keep that URL pointed at whichever host serves `/api/check-github`.

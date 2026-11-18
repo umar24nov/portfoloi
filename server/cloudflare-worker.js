@@ -1,6 +1,5 @@
 import express from "express";
 import { httpServerHandler } from "cloudflare:node";
-import { env } from "cloudflare:workers";
 
 const app = express();
 app.use(express.json({ limit: "12kb" }));
@@ -45,22 +44,7 @@ app.post("/api/contact", async (req, res) => {
       "INSERT INTO contact_messages (name, email, topic, message, ip_hash) SELECT ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM contact_messages WHERE ip_hash = ? AND created_at > datetime('now', '-1 hour')) < 5",
     ).bind(name, email, topic.slice(0, 80), message, ipHash, ipHash).run();
     if (saved.meta.changes === 0) return res.status(429).json({ error: "Please wait a while before sending another message." });
-    let emailSent = false;
-    if (env.EMAIL && env.CONTACT_TO && env.CONTACT_FROM) {
-      try {
-        await env.EMAIL.send({
-          to: env.CONTACT_TO,
-          from: env.CONTACT_FROM,
-          replyTo: email,
-          subject: `Portfolio message: ${topic.slice(0, 80) || "Hello"}`,
-          text: `From: ${name} <${email}>\nTopic: ${topic || "Not specified"}\n\n${message}`,
-        });
-        emailSent = true;
-      } catch (mailError) {
-        console.error("Contact notification email failed", mailError);
-      }
-    }
-    return res.status(201).json({ ok: true, emailSent });
+    return res.status(201).json({ ok: true });
   } catch (error) {
     console.error("Contact submission failed", error);
     return res.status(500).json({ error: "Your message could not be saved. Please try again later." });

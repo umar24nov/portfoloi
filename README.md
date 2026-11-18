@@ -26,10 +26,10 @@ my-portfolio/
 │   ├── App.test.js         # Smoke tests
 │   └── reportWebVitals.js
 ├── api/
-│   ├── contact.js          # Vercel serverless function: validation, Turnstile, Resend email
+│   ├── contact.js          # Vercel function: validation and forwarding to the primary API
 │   └── check-github.js     # GitHub activity monitor endpoint
 ├── server/
-│   ├── cloudflare-worker.js  # Production backend (D1 + Email)
+│   ├── cloudflare-worker.js  # Production backend (D1; no contact email)
 │   └── migrations/           # D1 schema
 ├── .github/workflows/      # CI, commit monitor, Cloudflare deploy
 ├── wrangler.jsonc          # Cloudflare Worker configuration
@@ -47,7 +47,7 @@ The UI is a single-page experience defined in `src/App.jsx` and styled by `src/i
 | UI | React 18 |
 | Styling | Tailwind CSS 3 + custom CSS |
 | Animation | Framer Motion, canvas |
-| Contact form | Cloudflare Worker + D1 + Email (Vercel function on the legacy domain) |
+| Contact form | Cloudflare Worker + D1 (Vercel function forwards from the legacy domain); contact email disabled |
 | Bot protection | Cloudflare Turnstile |
 | Data store | Cloudflare D1 (SQLite) |
 | Hosting | Cloudflare Workers (`mohammadumar.site`); Vercel (legacy domain) |
@@ -70,14 +70,15 @@ The UI is a single-page experience defined in `src/App.jsx` and styled by `src/i
 
 ## Environment variables
 
-### Vercel (contact form)
+### Vercel
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `RESEND_API_KEY` | yes | Resend API key used to send notification email |
-| `CONTACT_TO` | no | Destination inbox (defaults to `umar24nov@gmail.com`) |
-| `RESEND_FROM` | no | Verified sender (defaults to `onboarding@resend.dev`) |
-| `TURNSTILE_SECRET_KEY` | no | Enables server-side Turnstile verification |
+| `RESEND_API_KEY` | yes for the commit digest | Resend key used only by `/api/check-github` |
+| `CONTACT_TO` | no | Commit-digest destination (defaults to `umar24nov@gmail.com`) |
+| `RESEND_FROM` | no | Commit-digest sender (defaults to `onboarding@resend.dev`) |
+
+Contact submissions from the legacy domain are forwarded to `https://mohammadumar.site/api/contact`. The legacy function no longer sends email and does not need contact-specific email variables.
 
 ### Build-time (React)
 
@@ -88,7 +89,7 @@ The UI is a single-page experience defined in `src/App.jsx` and styled by `src/i
 
 ### Cloudflare Worker
 
-See `CLOUDFLARE.md` and `.dev.vars.example`. The Worker needs `DB`, `IP_HASH_SALT`, and optionally `TURNSTILE_SECRET`, `EMAIL`, `CONTACT_TO`, `CONTACT_FROM`.
+See `CLOUDFLARE.md` and `.dev.vars.example`. The Worker needs `DB`, `IP_HASH_SALT`, and optionally `TURNSTILE_SECRET`. Contact-form email delivery is disabled, so no email secrets are used.
 
 ---
 

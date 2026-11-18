@@ -1,15 +1,7 @@
-const esc = (s) =>
-  String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[c]));
-
 const text = (value) => (typeof value === "string" ? value.trim() : "");
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const PRIMARY_CONTACT_URL = "https://mohammadumar.site/api/contact";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -26,7 +18,7 @@ export default async function handler(req, res) {
   const turnstileToken = text(body.turnstileToken);
 
   // Honeypot: pretend success so bots do not learn the field is checked.
-  if (website) return res.status(202).json({ success: true, emailSent: false });
+  if (website) return res.status(202).json({ ok: true });
 
   if (name.length < 2 || name.length > 80) {
     return res.status(400).json({ error: "Please enter a valid name." });
@@ -38,76 +30,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Please enter a message between 10 and 4000 characters." });
   }
 
-  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
-  if (turnstileSecret) {
-    if (!turnstileToken) {
-      return res.status(400).json({ error: "Please complete the bot check and try again." });
-    }
-    try {
-      const forwarded = text(req.headers["x-forwarded-for"]).split(",")[0].trim();
-      const verification = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          secret: turnstileSecret,
-          response: turnstileToken,
-          remoteip: forwarded,
-        }),
-      });
-      const result = await verification.json();
-      if (!verification.ok || !result.success) {
-        return res.status(400).json({ error: "The bot check expired. Please try again." });
-      }
-    } catch (err) {
-      console.error("Turnstile verification failed:", err);
-      return res.status(503).json({ error: "The bot check is temporarily unavailable. Please try again." });
-    }
-  }
-
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    console.error("Contact form is missing RESEND_API_KEY");
-    return res.status(503).json({ error: "The contact form is not configured yet." });
-  }
-
-  const to = process.env.CONTACT_TO || "umar24nov@gmail.com";
-  const from = process.env.RESEND_FROM || "onboarding@resend.dev";
-
-  const html = `
-    <div style="font-family: 'JetBrains Mono', monospace; background: #0a0a0f; color: #e6e6f0; padding: 24px; border-radius: 8px;">
-      <div style="font-size: 12px; letter-spacing: 3px; color: #00ff88; margin-bottom: 16px;">NEW PORTFOLIO CONTACT</div>
-      <p style="margin: 4px 0;"><strong style="color: #ff6b35;">NAME:</strong> ${esc(name)}</p>
-      <p style="margin: 4px 0;"><strong style="color: #ff6b35;">EMAIL:</strong> ${esc(email)}</p>
-      <p style="margin: 4px 0;"><strong style="color: #ff6b35;">TOPIC:</strong> ${esc(topic || "(none)")}</p>
-      <div style="margin-top: 16px; border-top: 1px solid #33334d; padding-top: 16px; white-space: pre-wrap;">${esc(message)}</div>
-    </div>
-  `;
-
+  // The primary Worker owns storage and Turnstile verification. This legacy
+  // function forwards the token without consuming it locally, and sends no email.
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    const response = await fetch(PRIMARY_CONTACT_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        from: `Mohd Umar <${from}>`,
-        to,
-        reply_to: email,
-        subject: `New contact from ${name}${topic ? ` - ${topic}` : ""}`,
-        html,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, message, topic, turnstileToken }),
     });
-
+    const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("Resend error:", response.status, errText);
-      return res.status(502).json({ error: "Failed to send email" });
+      return res.status(response.status).json({ error: payload.error || "The contact service is unavailable right now." });
     }
-
-    return res.status(200).json({ success: true, emailSent: true });
+    return res.status(response.status).json({ ok: true });
   } catch (err) {
-    console.error("Contact error:", err);
-    return res.status(500).json({ error: "Failed to send message" });
+    console.error("Contact forwarding failed:", err);
+    return res.status(502).json({ error: "The contact service is temporarily unavailable. Please try again later." });
   }
 }
