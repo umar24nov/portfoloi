@@ -36,12 +36,15 @@ a { text-decoration:none; }
 .menu-toggle.is-open .menu-lines { background:transparent; }
 .menu-toggle.is-open .menu-lines::before { top:0; transform:rotate(45deg); }
 .menu-toggle.is-open .menu-lines::after { top:0; transform:rotate(-45deg); }
-.mobile-menu { position:fixed; z-index:35; inset:0; padding:110px var(--gutter) 48px; background:var(--bg); display:flex; flex-direction:column; justify-content:center; gap:.35rem; }
-.mobile-menu-close { position:absolute; top:84px; right:var(--gutter); display:inline-flex; align-items:center; gap:.45rem; min-height:40px; padding:.4rem .75rem; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--fg); font:500 .68rem var(--mono); letter-spacing:.1em; text-transform:uppercase; }
-.mobile-menu-close span { font-size:1.2rem; line-height:1; }
+.mobile-menu-backdrop { position:fixed; z-index:44; inset:0; background:rgb(0 0 0 / .55); }
+.mobile-menu { position:fixed; z-index:45; inset:0 0 0 auto; width:clamp(150px,36%,340px); padding:88px 16px 28px; overflow-y:auto; background:var(--bg); border-left:1px solid var(--line); box-shadow:-16px 0 44px rgb(0 0 0 / .32); display:flex; flex-direction:column; justify-content:center; gap:.3rem; }
+.mobile-menu-close { position:absolute; top:24px; right:16px; display:inline-flex; align-items:center; gap:.4rem; min-height:36px; padding:.35rem .6rem; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--fg); font:500 .62rem var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+.mobile-menu-close span { font-size:1.1rem; line-height:1; }
 .mobile-menu-close:hover { border-color:var(--accent); color:var(--accent); }
-.mobile-menu a { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); padding:.7rem 0; font:600 clamp(1.5rem,6.5vw,2.2rem)/1.1 var(--serif); letter-spacing:-.03em; }
-.mobile-menu a svg { width:1rem; height:1rem; color:var(--accent); }
+.mobile-menu a { display:flex; align-items:center; justify-content:space-between; gap:.4rem; border-bottom:1px solid var(--line); padding:.62rem 0; font:600 clamp(1rem,4.2vw,1.35rem)/1.1 var(--serif); letter-spacing:-.02em; }
+.mobile-menu a svg { width:.85rem; height:.85rem; flex:none; color:var(--accent); }
+.mobile-menu .mobile-menu-cta { margin-top:.6rem; border-bottom:0; border:1px solid var(--accent); border-radius:999px; padding:.6rem .7rem; background:var(--accent); color:var(--accent-ink); font:650 .72rem/1 var(--mono); letter-spacing:.02em; justify-content:center; text-transform:uppercase; }
+.mobile-menu .mobile-menu-cta svg { color:inherit; }
 .hero { min-height:100svh; padding-top:calc(76px + clamp(40px,7vh,80px)); padding-bottom:54px; display:flex; flex-direction:column; justify-content:space-between; position:relative; }
 .hero::before { content:""; position:absolute; top:18%; right:2%; width:min(52vw,760px); aspect-ratio:1; border:1px solid var(--line); border-radius:50%; opacity:.38; pointer-events:none; }
 .hero-kicker { display:flex; align-items:center; gap:.7rem; color:var(--muted); font:400 .68rem var(--mono); letter-spacing:.08em; text-transform:uppercase; }
@@ -617,6 +620,7 @@ main > section[id] { scroll-margin-top:92px; }
 .floating-contact { position:fixed; z-index:55; right:clamp(16px,3vw,38px); bottom:calc(16px + env(safe-area-inset-bottom)); display:inline-flex; min-height:48px; align-items:center; justify-content:center; gap:.6rem; padding:.72rem 1.05rem; border:1px solid var(--accent); border-radius:999px; background:var(--accent); color:var(--accent-ink); font-size:.8rem; font-weight:650; box-shadow:0 8px 30px rgb(0 0 0 / .28); transition:transform .2s,background-color .2s,color .2s,box-shadow .2s; }
 .floating-contact svg { width:.9rem; height:.9rem; }
 .floating-contact:hover { transform:translateY(-3px); background:var(--fg); border-color:var(--fg); color:var(--bg); box-shadow:0 12px 34px rgb(0 0 0 / .36); }
+@media (max-width:1279px) { .floating-contact { display:none; } }
 .case-visual .project-artwork { z-index:0; }
 @media (max-width:900px) {
   .section-shell,.contact-section { padding-block:48px; }
