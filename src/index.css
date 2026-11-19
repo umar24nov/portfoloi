@@ -38,7 +38,7 @@ a { text-decoration:none; }
 .menu-toggle.is-open .menu-lines::after { top:0; transform:rotate(-45deg); }
 @keyframes mu-fade-in { from { opacity:0; } to { opacity:1; } }
 .mobile-menu-backdrop { position:fixed; z-index:44; inset:0; background:rgb(0 0 0 / .55); animation:mu-fade-in .2s ease-out; }
-.mobile-menu { position:fixed; z-index:45; inset:0 0 0 auto; width:clamp(150px,36%,340px); padding:88px 16px 28px; overflow-y:auto; background:var(--bg); border-left:1px solid var(--line); box-shadow:-16px 0 44px rgb(0 0 0 / .32); display:flex; flex-direction:column; justify-content:center; gap:.3rem; animation:mu-fade-in .22s ease-out; }
+.mobile-menu { position:fixed; z-index:45; inset:0 0 0 auto; width:clamp(240px,66.67%,860px); padding:88px 16px 28px; overflow-y:auto; background:var(--bg); border-left:1px solid var(--line); box-shadow:-16px 0 44px rgb(0 0 0 / .32); display:flex; flex-direction:column; justify-content:center; gap:.3rem; animation:mu-fade-in .22s ease-out; }
 .mobile-menu-close { position:absolute; top:24px; right:16px; display:inline-flex; align-items:center; gap:.4rem; min-height:36px; padding:.35rem .6rem; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--fg); font:500 .62rem var(--mono); letter-spacing:.08em; text-transform:uppercase; }
 .mobile-menu-close span { font-size:1.1rem; line-height:1; }
 .mobile-menu-close:hover { border-color:var(--accent); color:var(--accent); }

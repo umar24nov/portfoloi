@@ -97,7 +97,7 @@ See `CLOUDFLARE.md` and `.dev.vars.example`. The Worker needs `DB`, `IP_HASH_SAL
 
 **Cloudflare Workers is the primary host** for https://mohammadumar.site/. Pushing to `main` runs CI and then deploys the Worker, its static assets, and D1 migrations. The Worker handles `/api/*`, including the D1-backed contact form.
 
-Vercel still serves the older `mohammadumarportfoloi.online` domain from the same repository; its `api/*` functions are the equivalent for that host. The scheduled commit monitor deliberately targets the Vercel domain because `/api/check-github` is only implemented there.
+All hostnames redirect to the canonical `https://mohammadumar.site/`: the Worker redirects `www.mohammadumar.site` and plain HTTP, and `vercel.json` redirects the legacy `mohammadumarportfoloi.online` hostnames. The only path exempt from the legacy redirect is `/api/check-github`, which the scheduled commit monitor deliberately calls on the Vercel deployment because that endpoint is only implemented there.
 
 CI (`.github/workflows/ci.yml`) runs the tests and a production build on every push and pull request.
 

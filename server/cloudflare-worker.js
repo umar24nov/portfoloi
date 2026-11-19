@@ -1,6 +1,9 @@
 import express from "express";
-import { httpServerHandler } from "cloudflare:node";
+import { handleAsNodeRequest } from "cloudflare:node";
 import { env } from "cloudflare:workers";
+
+const CANONICAL_HOST = "mohammadumar.site";
+const API_PORT = 3000;
 
 const app = express();
 app.use(express.json({ limit: "12kb" }));
@@ -60,5 +63,20 @@ async function hashIp(ip, salt) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-app.listen(3000);
-export default httpServerHandler({ port: 3000 });
+app.listen(API_PORT);
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const host = (request.headers.get("host") || url.hostname).split(":")[0].toLowerCase().replace(/\.$/, "");
+    if (url.protocol !== "https:" || host !== CANONICAL_HOST) {
+      const canonical = new URL(request.url);
+      canonical.protocol = "https:";
+      canonical.hostname = CANONICAL_HOST;
+      canonical.port = "";
+      return Response.redirect(canonical.toString(), 308);
+    }
+    if (url.pathname.startsWith("/api/")) return handleAsNodeRequest(API_PORT, request);
+    return env.ASSETS.fetch(request);
+  },
+};

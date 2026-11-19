@@ -11,11 +11,11 @@ The target deployment is one Cloudflare Worker: React's production build is serv
 - The Vercel serverless function in `api/contact.js` is the contact handler for the **legacy** `mohammadumarportfoloi.online` domain. It validates fields, checks the honeypot, and forwards the payload and Turnstile token to the primary Worker. It sends no email. The Worker below is the primary backend for `mohammadumar.site`.
 - The portfolio guide is an offline, profile-based question/answer feature in the frontend. It does not call an LLM or send prompts to a server.
 
-The old `vercel.json` deployment configuration has been removed from the Cloudflare migration. Vercel's Git integration is still connected so the legacy `mohammadumarportfoloi.online` domain keeps working; it does not interfere with the Worker deployment.
+`vercel.json` now only contains permanent redirects from the legacy `mohammadumarportfoloi.online` hostnames to `https://mohammadumar.site/`. The `/api/check-github` path is exempt so the scheduled commit digest keeps working on Vercel.
 
 ### What is running before Cloudflare is configured
 
-Cloudflare Workers is the primary production host at `https://mohammadumar.site/`: pushing to `main` deploys the React build and the Worker, and `server/cloudflare-worker.js` stores submissions in D1. Contact-form email delivery is disabled. Vercel continues to serve the older `mohammadumarportfoloi.online` domain from the same repository, where `api/contact.js` forwards submissions to the primary Worker. The separate commit-digest email is unchanged and still sent by `/api/check-github` on Vercel through Resend. The visitor's browser never connects directly to D1.
+Cloudflare Workers is the primary production host at `https://mohammadumar.site/`: pushing to `main` deploys the React build and the Worker, and `server/cloudflare-worker.js` stores submissions in D1. Contact-form email delivery is disabled. Every other hostname (`www.mohammadumar.site`, `mohammadumarportfoloi.online`, `www.mohammadumarportfoloi.online`, and plain HTTP) redirects to the canonical HTTPS URL. The separate commit-digest email is unchanged and still sent by `/api/check-github` on Vercel through Resend. The visitor's browser never connects directly to D1.
 
 ## 1. Create and connect your Cloudflare account
 
@@ -62,7 +62,7 @@ npx wrangler d1 execute mohammad-umar-portfolio --remote --command "SELECT creat
 3. Add the widget's secret as the `TURNSTILE_SECRET` Worker secret above.
 4. In the GitHub repository, open **Settings > Secrets and variables > Actions > Variables** and add `REACT_APP_TURNSTILE_SITE_KEY` with the widget's public site key.
 
-The form renders the widget when the public site key is present. The API verifies the submitted token with Cloudflare before accepting the message. Cloudflare requires server-side token verification for Turnstile; the client widget by itself is not sufficient ([Turnstile validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)).
+The form renders the widget when the public site key is present. The Turnstile API script is loaded only when the contact section is near the viewport, and the challenge runs only when the visitor starts using the form (`execution: "execute"`, `appearance: "interaction-only"`). This prevents Cloudflare's challenge iframe from running during normal browsing. The API verifies the submitted token with Cloudflare before accepting the message. Cloudflare requires server-side token verification for Turnstile; the client widget by itself is not sufficient ([Turnstile validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)).
 
 ## 5. Configure GitHub auto-deploy
 
@@ -97,7 +97,7 @@ After GitHub secrets are configured, the workflow handles remote migrations and 
 
 ## 7. Custom domain
 
-The live domain `mohammadumar.site` (and `www.mohammadumar.site`) is attached to the deployed Worker. To add another, open **Workers & Pages > your Worker > Settings > Domains & Routes** and add the hostname after its DNS points at Cloudflare.
+The live domain `mohammadumar.site` (and `www.mohammadumar.site`) is attached to the deployed Worker. To add another, open **Workers & Pages > your Worker > Settings > Domains & Routes** and add the hostname after its DNS points at Cloudflare. The Worker runs on every request (`run_worker_first: ["/*"]`) so it can redirect any non-canonical host or plain-HTTP request to `https://mohammadumar.site/`, then serve assets through the `ASSETS` binding.
 
 For Turnstile, add `mohammadumar.site`, `www.mohammadumar.site`, `mohammadumarportfoloi.online`, and `www.mohammadumarportfoloi.online` as allowed hostnames on the widget, otherwise the challenge can fail depending on which hostname the visitor used.
 

@@ -221,6 +221,9 @@ export default function App() {
   const caseRef = useRef(null);
   const chatRef = useRef(null);
   const turnstileRef = useRef(null);
+  const turnstileWidgetRef = useRef(null);
+  const turnstileTokenRef = useRef("");
+  const turnstileResolveRef = useRef(null);
 
   useEffect(() => { document.documentElement.dataset.theme = theme; storeTheme(theme); window.dispatchEvent(new Event("themechange")); }, [theme]);
   useEffect(() => {
@@ -244,28 +247,92 @@ export default function App() {
   useEffect(() => { document.body.style.overflow = selected || menuOpen || chatOpen ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [selected, menuOpen, chatOpen]);
   useEffect(() => {
     const siteKey = process.env.REACT_APP_TURNSTILE_SITE_KEY;
-    if (!siteKey || !turnstileRef.current) return undefined;
+    const section = document.getElementById("contact");
+    if (!siteKey || !section) return undefined;
     let cancelled = false;
-    let timer;
-    const mount = () => {
-      if (cancelled || !turnstileRef.current || !window.turnstile) return;
-      turnstileRef.current.innerHTML = "";
-      window.turnstile.render(turnstileRef.current, { sitekey: siteKey, theme: "auto" });
+    let scriptPromise;
+    let observer;
+
+    // Only fetch the challenge script when the contact form is near the viewport.
+    const loadScript = () => {
+      if (scriptPromise) return scriptPromise;
+      if (window.turnstile) { scriptPromise = Promise.resolve(true); return scriptPromise; }
+      const existing = document.querySelector("script[data-mu-turnstile]");
+      scriptPromise = new Promise((resolve) => {
+        if (existing) {
+          existing.addEventListener("load", () => resolve(true), { once: true });
+          existing.addEventListener("error", () => resolve(false), { once: true });
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.defer = true;
+        script.dataset.muTurnstile = "true";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+      });
+      return scriptPromise;
     };
-    window.addEventListener("turnstile-ready", mount, { once: true });
-    if (window.turnstile) mount();
-    else {
-      timer = window.setInterval(() => {
-        if (window.turnstile) { window.clearInterval(timer); mount(); }
-      }, 300);
-      window.setTimeout(() => { if (timer) window.clearInterval(timer); }, 15000);
-    }
-    return () => {
-      cancelled = true;
-      window.removeEventListener("turnstile-ready", mount);
-      if (timer) window.clearInterval(timer);
+
+    const start = async () => {
+      if (!(await loadScript()) || cancelled || !turnstileRef.current) return;
+      try {
+        // Defer the challenge until the visitor actually uses the form, so
+        // Cloudflare's challenge iframe does not run during normal browsing.
+        turnstileWidgetRef.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: siteKey,
+          theme: "auto",
+          appearance: "interaction-only",
+          execution: "execute",
+          callback: (token) => {
+            turnstileTokenRef.current = token;
+            const resolve = turnstileResolveRef.current;
+            turnstileResolveRef.current = null;
+            if (resolve) resolve(token);
+          },
+          "error-callback": () => {
+            turnstileTokenRef.current = "";
+            const resolve = turnstileResolveRef.current;
+            turnstileResolveRef.current = null;
+            if (resolve) resolve("");
+          },
+        });
+      } catch { /* the form will report that the bot check is unavailable */ }
     };
+
+    observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      observer.disconnect();
+      start();
+    }, { rootMargin: "600px 0px" });
+    observer.observe(section);
+
+    return () => { cancelled = true; observer.disconnect(); };
   }, []);
+
+  const ensureTurnstileToken = () => {
+    if (turnstileTokenRef.current) return Promise.resolve(turnstileTokenRef.current);
+    if (!window.turnstile || turnstileWidgetRef.current == null) return Promise.resolve("");
+    const existing = window.turnstile.getResponse(turnstileWidgetRef.current);
+    if (existing) { turnstileTokenRef.current = existing; return Promise.resolve(existing); }
+    if (turnstileResolveRef.current) return Promise.resolve("");
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        if (turnstileResolveRef.current === finish) turnstileResolveRef.current = null;
+        resolve(value);
+      };
+      const timer = window.setTimeout(() => finish(""), 12000);
+      turnstileResolveRef.current = finish;
+      try { window.turnstile.execute(turnstileWidgetRef.current); }
+      catch { finish(""); }
+    });
+  };
   useEffect(() => {
     const open = selected !== null || chatOpen;
     if (!open) return undefined;
@@ -286,17 +353,19 @@ export default function App() {
   };
   const submitContact = async (event) => {
     event.preventDefault(); setFormState("sending");
-      const formNode = event.currentTarget;
+    const formNode = event.currentTarget;
     const form = new FormData(formNode);
+    const turnstileToken = await ensureTurnstileToken();
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || ""}/api/contact`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: form.get("name"), email: form.get("email"), message: form.get("message"), topic: form.get("topic"), website: form.get("website"), turnstileToken: form.get("cf-turnstile-response") }) });
+      const response = await fetch(`${process.env.REACT_APP_API_URL || ""}/api/contact`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: form.get("name"), email: form.get("email"), message: form.get("message"), topic: form.get("topic"), website: form.get("website"), turnstileToken }) });
       if (!response.ok) {
         const detail = await response.json().catch(() => ({}));
         throw new Error(detail.error || "Contact service unavailable");
       }
       await response.json().catch(() => ({}));
       setFormNotice(""); setFormState("sent"); formNode.reset();
-      try { window.turnstile?.reset(); } catch { /* widget may not be mounted */ }
+      turnstileTokenRef.current = "";
+      try { if (turnstileWidgetRef.current != null) window.turnstile?.reset(turnstileWidgetRef.current); } catch { /* widget may not be mounted */ }
     } catch (error) { setFormNotice(error.message || "Couldn’t send right now. Please try again in a moment."); setFormState("error"); }
   };
   const getUmarAnswer = (raw) => {
@@ -348,7 +417,7 @@ export default function App() {
 
       <section id="achievements" className="section-shell wrap proof-section"><motion.div className="proof-big" initial={{ opacity: 0, scale: .92 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: .85 }}><span>150</span><span className="proof-plus">+</span><p>LeetCode problems<br />solved</p></motion.div><div className="proof-content"><Eyebrow>Achievements and learning</Eyebrow><h2 className="section-title">Practice, every day.</h2><div className="proof-list"><article><span>01</span><div><h3>DSA practice in C++</h3><p>Regular problem solving across core data structures and algorithms.</p></div></article><article><span>02</span><div><h3>Technical certifications</h3><p>Courses completed alongside university coursework.</p></div></article><article><span>03</span><div><h3>Hackathon participation</h3><p>Building and shipping ideas against the clock with other students.</p></div></article><article><span>04</span><div><h3>Continuous learning</h3><p>Always working through the next framework, concept, or problem set.</p></div></article></div></div></section>
 
-      <section id="contact" className="contact-section"><div className="wrap"><Eyebrow>06 / Start a conversation</Eyebrow><h2 className="contact-title">Have an idea<br />worth building<span className="accent-dot">?</span></h2><div className="contact-grid"><div><p className="contact-lead">I’m interested in meaningful projects, thoughtful technical challenges, and opportunities to learn and collaborate.</p><a className="social-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">Find me on GitHub <Arrow diagonal /></a></div><form className="contact-form" onSubmit={submitContact}><input className="contact-honey" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" /><label>Your name<input name="name" autoComplete="name" required maxLength="80" placeholder="What should I call you?" /></label><label>Email address<input type="email" name="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label><label>What’s on your mind?<select name="topic"><option>Project idea</option><option>Internship opportunity</option><option>Collaboration</option><option>Just saying hello</option></select></label><label>Message<textarea name="message" rows="4" required minLength="10" maxLength="4000" placeholder="A little context goes a long way…" /></label>{process.env.REACT_APP_TURNSTILE_SITE_KEY && <div className="cf-turnstile" ref={turnstileRef} />}<div className="form-bottom"><button className="button button-primary" type="submit" disabled={formState === "sending"}>{formState === "sending" ? "Sending…" : "Send a message"}<Arrow /></button><p role="status" className={`form-status ${formState}`}>{formState === "sent" ? "Thanks — your message was saved." : formState === "error" ? formNotice : "Your message will be saved securely."}</p></div></form></div></div></section>
+      <section id="contact" className="contact-section"><div className="wrap"><Eyebrow>06 / Start a conversation</Eyebrow><h2 className="contact-title">Have an idea<br />worth building<span className="accent-dot">?</span></h2><div className="contact-grid"><div><p className="contact-lead">I’m interested in meaningful projects, thoughtful technical challenges, and opportunities to learn and collaborate.</p><a className="social-link" href="https://github.com/umar24nov" target="_blank" rel="noreferrer">Find me on GitHub <Arrow diagonal /></a></div><form className="contact-form" onSubmit={submitContact} onFocus={ensureTurnstileToken}><input className="contact-honey" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" /><label>Your name<input name="name" autoComplete="name" required maxLength="80" placeholder="What should I call you?" /></label><label>Email address<input type="email" name="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label><label>What’s on your mind?<select name="topic"><option>Project idea</option><option>Internship opportunity</option><option>Collaboration</option><option>Just saying hello</option></select></label><label>Message<textarea name="message" rows="4" required minLength="10" maxLength="4000" placeholder="A little context goes a long way…" /></label>{process.env.REACT_APP_TURNSTILE_SITE_KEY && <div className="cf-turnstile" ref={turnstileRef} />}<div className="form-bottom"><button className="button button-primary" type="submit" disabled={formState === "sending"}>{formState === "sending" ? "Sending…" : "Send a message"}<Arrow /></button><p role="status" className={`form-status ${formState}`}>{formState === "sent" ? "Thanks — your message was saved." : formState === "error" ? formNotice : "Your message will be saved securely."}</p></div></form></div></div></section>
     </main>
     <footer className="site-footer wrap" aria-label="Portfolio footer"><a className="brand" href="#/home" onClick={(event) => { event.preventDefault(); goTo("home"); }}><BrandMark /><span>Mohammad Umar</span></a><div className="footer-meta"><nav className="footer-socials" aria-label="Social and contact links"><a href="mailto:umar24nov@gmail.com">Email</a><a href="https://www.linkedin.com/in/mohammadumarfarook" target="_blank" rel="noreferrer">LinkedIn <Arrow diagonal /></a><a href="https://leetcode.com/u/umar24nov/" target="_blank" rel="noreferrer">LeetCode <Arrow diagonal /></a></nav><span className="footer-credit">© {new Date().getFullYear()} Mohammad Umar</span></div></footer><a className="floating-contact" href="#/contact" onClick={(event) => { event.preventDefault(); goTo("contact"); }}>Get in touch <Arrow diagonal /></a>
     <AnimatePresence>{chatOpen && <motion.div className="assistant-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) setChatOpen(false); }}><motion.section ref={chatRef} tabIndex={-1} onKeyDown={(event) => trapFocus(event, chatRef.current)} className={`assistant-panel ${chatMinimized ? "is-minimized" : ""}`} initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .2 }} role="dialog" aria-modal="true" aria-labelledby="assistant-title"><div className="assistant-head"><div><p className="mono-label">Profile-based demo</p><h2 id="assistant-title">Portfolio guide</h2></div><div className="assistant-controls"><button className="icon-button" onClick={newChat} aria-label="Start a new chat">↻</button><button className="icon-button" onClick={() => setChatMinimized(!chatMinimized)} aria-label={chatMinimized ? "Expand assistant" : "Minimize assistant"}>{chatMinimized ? "+" : "−"}</button><button className="icon-button" onClick={() => setChatOpen(false)} aria-label="Close assistant">×</button></div></div>{!chatMinimized && <><div className="assistant-messages" aria-live="polite">{messages.map((message, index) => <p key={`${index}-${message.role}`} className={`assistant-message ${message.role}`}>{message.text}</p>)}</div><div className="assistant-prompts">{["What projects have you built?", "Tell me about your education", "What skills do you use?", "What is your experience?"].map((prompt) => <button key={prompt} onClick={() => submitQuestion(prompt)}>{prompt}</button>)}</div><form className="assistant-form" onSubmit={askUmar}><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about Umar…" maxLength={240} aria-label="Ask about Umar" /><button aria-label="Send question"><Arrow /></button></form><p className="assistant-note">Demo mode · Answers are based on the portfolio profile.</p></>}</motion.section></motion.div>}</AnimatePresence>
