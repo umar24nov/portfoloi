@@ -33,8 +33,15 @@ a { text-decoration:none; }
 .menu-lines::before,.menu-lines::after { content:""; position:absolute; left:0; width:18px; height:1px; background:var(--fg); transition:transform .2s,top .2s; }
 .menu-lines::before { top:-5px; }
 .menu-lines::after { top:5px; }
-.mobile-menu { position:fixed; z-index:35; inset:0; padding:110px var(--gutter) 48px; background:var(--bg); display:flex; flex-direction:column; justify-content:center; gap:1rem; }
-.mobile-menu a { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); padding:.6rem 0 1rem; font:600 clamp(2.6rem,13vw,5rem)/1 var(--serif); letter-spacing:-.05em; }
+.menu-toggle.is-open .menu-lines { background:transparent; }
+.menu-toggle.is-open .menu-lines::before { top:0; transform:rotate(45deg); }
+.menu-toggle.is-open .menu-lines::after { top:0; transform:rotate(-45deg); }
+.mobile-menu { position:fixed; z-index:35; inset:0; padding:110px var(--gutter) 48px; background:var(--bg); display:flex; flex-direction:column; justify-content:center; gap:.35rem; }
+.mobile-menu-close { position:absolute; top:84px; right:var(--gutter); display:inline-flex; align-items:center; gap:.45rem; min-height:40px; padding:.4rem .75rem; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--fg); font:500 .68rem var(--mono); letter-spacing:.1em; text-transform:uppercase; }
+.mobile-menu-close span { font-size:1.2rem; line-height:1; }
+.mobile-menu-close:hover { border-color:var(--accent); color:var(--accent); }
+.mobile-menu a { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); padding:.7rem 0; font:600 clamp(1.5rem,6.5vw,2.2rem)/1.1 var(--serif); letter-spacing:-.03em; }
+.mobile-menu a svg { width:1rem; height:1rem; color:var(--accent); }
 .hero { min-height:100svh; padding-top:calc(76px + clamp(40px,7vh,80px)); padding-bottom:54px; display:flex; flex-direction:column; justify-content:space-between; position:relative; }
 .hero::before { content:""; position:absolute; top:18%; right:2%; width:min(52vw,760px); aspect-ratio:1; border:1px solid var(--line); border-radius:50%; opacity:.38; pointer-events:none; }
 .hero-kicker { display:flex; align-items:center; gap:.7rem; color:var(--muted); font:400 .68rem var(--mono); letter-spacing:.08em; text-transform:uppercase; }
