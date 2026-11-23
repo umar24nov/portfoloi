@@ -11,11 +11,11 @@ The target deployment is one Cloudflare Worker: React's production build is serv
 - The Vercel serverless function in `api/contact.js` is the contact handler for the **legacy** `mohammadumarportfoloi.online` domain. It validates fields, checks the honeypot, and forwards the payload and Turnstile token to the primary Worker. It sends no email. The Worker below is the primary backend for `mohammadumar.site`.
 - The portfolio guide is an offline, profile-based question/answer feature in the frontend. It does not call an LLM or send prompts to a server.
 
-`vercel.json` now only contains permanent redirects from the legacy `mohammadumarportfoloi.online` hostnames to `https://mohammadumar.site/`. The `/api/check-github` path is exempt so the scheduled commit digest keeps working on Vercel.
+`vercel.json` now only contains permanent redirects from the legacy `mohammadumarportfoloi.online` hostnames to `https://mohammadumar.site/`. The `/api/check-github` path is exempt so the commit digest endpoint stays reachable on Vercel, although its scheduled runs are currently paused.
 
 ### What is running before Cloudflare is configured
 
-Cloudflare Workers is the primary production host at `https://mohammadumar.site/`: pushing to `main` deploys the React build and the Worker, and `server/cloudflare-worker.js` stores submissions in D1. Contact-form email delivery is disabled. Every other hostname (`www.mohammadumar.site`, `mohammadumarportfoloi.online`, `www.mohammadumarportfoloi.online`, and plain HTTP) redirects to the canonical HTTPS URL. The separate commit-digest email is unchanged and still sent by `/api/check-github` on Vercel through Resend. The visitor's browser never connects directly to D1.
+Cloudflare Workers is the primary production host at `https://mohammadumar.site/`: pushing to `main` deploys the React build and the Worker, and `server/cloudflare-worker.js` stores submissions in D1. Contact-form email delivery is disabled. Every other hostname (`www.mohammadumar.site`, `mohammadumarportfoloi.online`, `www.mohammadumarportfoloi.online`, and plain HTTP) redirects to the canonical HTTPS URL. The separate commit-digest email from `/api/check-github` on Vercel is currently paused: the `commit-monitor.yml` schedule is disabled, so no digest emails are sent. The visitor's browser never connects directly to D1.
 
 ## 1. Create and connect your Cloudflare account
 
@@ -41,7 +41,7 @@ npx wrangler secret put TURNSTILE_SECRET
 - `IP_HASH_SALT`: a long random value used to hash IP addresses for the contact rate limit.
 - `TURNSTILE_SECRET`: the secret key for the Turnstile widget. If you are not setting up Turnstile yet, skip this secret; the contact API will continue to use validation, a honeypot, and its hourly rate limit.
 
-Contact email secrets are no longer needed. `RESEND_API_KEY`, `CONTACT_TO`, and `RESEND_FROM` on Vercel are only used by the scheduled commit digest.
+Contact email secrets are no longer needed. `RESEND_API_KEY`, `CONTACT_TO`, and `RESEND_FROM` on Vercel are only used by the commit digest, whose scheduled runs are currently paused.
 
 For local development, copy `.dev.vars.example` to `.dev.vars` and fill the same values. `.dev.vars` is ignored by Git. To test without Turnstile, leave `TURNSTILE_SECRET` blank and leave the site key unset.
 
@@ -120,6 +120,6 @@ For Turnstile, add `mohammadumar.site`, `www.mohammadumar.site`, `mohammadumarpo
 | React build variable | `REACT_APP_API_URL` | No | Leave unset for this same-origin Worker API; the app defaults to `/api`. |
 | Local `.dev.vars` | `IP_HASH_SALT` and optional Worker secrets | Only for local Worker development | Local-only values; copy `.dev.vars.example` and replace its placeholders. |
 
-Contact-form email delivery is disabled on both hosts. The `send_email` binding remains in `wrangler.jsonc` for compatibility but is unused. `RESEND_API_KEY` on Vercel is still required for the scheduled commit digest.
+Contact-form email delivery is disabled on both hosts. The `send_email` binding remains in `wrangler.jsonc` for compatibility but is unused. `RESEND_API_KEY` on Vercel is still required for the commit digest if its schedule is re-enabled.
 
-The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. The separate `commit-monitor.yml` workflow calls `https://www.mohammadumarportfoloi.online/api/check-github` because that endpoint exists only on the Vercel deployment; the Worker returns 404 for it. Keep that URL pointed at whichever host serves `/api/check-github`.
+The GitHub deployment token and the Worker runtime secrets serve different purposes. The deployment token is stored in GitHub and is not available to the browser or the Worker. Runtime secrets are stored on the deployed Worker. The separate `commit-monitor.yml` workflow calls `https://www.mohammadumarportfoloi.online/api/check-github` because that endpoint exists only on the Vercel deployment; the Worker returns 404 for it. Its `schedule` trigger is currently commented out, so it only runs when triggered manually. Keep that URL pointed at whichever host serves `/api/check-github`.

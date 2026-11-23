@@ -1,8 +1,10 @@
 name: Commit Monitor
 
+# The scheduled digest emails are paused until further notice.
+# To resume them, uncomment the `schedule` block below.
 on:
-  schedule:
-    - cron: "0 6 * * *"
+  # schedule:
+  #   - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
